@@ -120,6 +120,15 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
     console.error('Google sign in error:', error);
+    const code = error?.code || '';
+    if (code === 'auth/unauthorized-domain' || /unauthorized-domain/i.test(error?.message || '')) {
+      const host = typeof window !== 'undefined' ? window.location.hostname : 'Vercel';
+      throw new Error(
+        `Firebase: Error (auth/unauthorized-domain). ` +
+          `الدومين الحالي «${host}» غير مصرّح به في مشروع Firebase. ` +
+          `الحل: Firebase Console ← Authentication ← Settings ← Authorized domains ← Add domain ← أضف «${host}».`
+      );
+    }
     throw error;
   } finally {
     isSigningIn = false;
