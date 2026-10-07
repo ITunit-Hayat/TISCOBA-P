@@ -343,18 +343,6 @@ export async function readSheetsDataFromPublicCsv(
   return { entrees, sorties };
 }
 
-/**
- * Reads live data from Google Sheets directly (pulls Entrأ©es and Sorties)
- */
-export async function readAllSheetsData(
-  accessToken: string,
-  spreadsheetId: string
-): Promise<{ entrees: EntreeItem[]; sorties: SortieItem[] }> {
-  // Fetch up to 500 rows across full column ranges
-  const range1 = encodeURIComponent("'Feuille 1 Entrأ©e'!A2:F500");
-  const range2 = encodeURIComponent("'Feuille 2 Sortie'!A2:H500");
-
-  const [res1, res2] = await Promise.all([
     fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range1}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     }),
