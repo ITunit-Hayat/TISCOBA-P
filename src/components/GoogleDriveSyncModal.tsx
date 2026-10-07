@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Cloud, 
   CheckCircle2, 
@@ -94,11 +94,11 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
       setClientIdSaved(true);
       setDirectMode(false);
       setStatusMessage({
-        text: lang === 'ar' ? 'طھظ… ط­ظپط¸ ظ…ط¹ط±ظپ ط§ظ„ط¹ظ…ظٹظ„ â€” ظٹظ…ظƒظ†ظƒ ط§ظ„ط¢ظ† ط§ظ„ط¯ط®ظˆظ„ ط§ظ„ظ…ط¨ط§ط´ط± âœ…' : 'Client ID enregistrأ© âœ…',
+        text: lang === 'ar' ? 'تم حفظ معرف العميل — يمكنك الآن الدخول المباشر ✅' : 'Client ID enregistré ✅',
         type: 'success',
       });
     } catch (err: any) {
-      setClientIdError(err?.message || 'ظ…ط¹ط±ظپ ط؛ظٹط± طµط§ظ„ط­');
+      setClientIdError(err?.message || 'معرف غير صالح');
     }
   };
 
@@ -107,8 +107,8 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
       setDirectMode(true);
       setStatusMessage({
         text: lang === 'ar'
-          ? 'ط£ط¯ط®ظ„ ظ…ط¹ط±ظپ ط¹ظ…ظٹظ„ Google ط§ظ„ط®ط§طµ ط¨ظƒ ط£ظˆظ„ط§ظ‹ (ط®ط·ظˆط© ظˆط§ط­ط¯ط© ظپظ‚ط·)'
-          : 'Entrez votre Client ID Google dâ€™abord',
+          ? 'أدخل معرف عميل Google الخاص بك أولاً (خطوة واحدة فقط)'
+          : 'Entrez votre Client ID Google d’abord',
         type: 'error',
       });
       return;
@@ -132,12 +132,12 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
       } catch {}
       onUserChange(pseudoUser, result.accessToken);
       setStatusMessage({
-        text: lang === 'ar' ? 'طھظ… طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„ ط§ظ„ظ…ط¨ط§ط´ط± ط¨ظ†ط¬ط§ط­! âœ…' : 'Connexion directe rأ©ussie ! âœ…',
+        text: lang === 'ar' ? 'تم تسجيل الدخول المباشر بنجاح! ✅' : 'Connexion directe réussie ! ✅',
         type: 'success',
       });
     } catch (err: any) {
       setStatusMessage({
-        text: err.message || (lang === 'ar' ? 'ظپط´ظ„ ط§ظ„ط¯ط®ظˆظ„ ط§ظ„ظ…ط¨ط§ط´ط±' : 'أ‰chec de la connexion directe'),
+        text: err.message || (lang === 'ar' ? 'فشل الدخول المباشر' : 'Échec de la connexion directe'),
         type: 'error',
       });
     } finally {
@@ -153,13 +153,13 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
       if (result) {
         onUserChange(result.user, result.accessToken);
         setStatusMessage({
-          text: lang === 'ar' ? 'طھظ… طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„ ط¨ظ†ط¬ط§ط­ ط¨ط­ط³ط§ط¨ Google Drive!' : 'Connexion أ  Google Drive rأ©ussie !',
+          text: lang === 'ar' ? 'تم تسجيل الدخول بنجاح بحساب Google Drive!' : 'Connexion à Google Drive réussie !',
           type: 'success',
         });
       }
     } catch (err: any) {
       setStatusMessage({
-        text: err.message || (lang === 'ar' ? 'ظپط´ظ„ طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„' : 'أ‰chec de la connexion'),
+        text: err.message || (lang === 'ar' ? 'فشل تسجيل الدخول' : 'Échec de la connexion'),
         type: 'error',
       });
     } finally {
@@ -173,7 +173,7 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
     onSpreadsheetChange(null);
     setDriveFiles([]);
     setStatusMessage({
-      text: lang === 'ar' ? 'طھظ… طھط³ط¬ظٹظ„ ط§ظ„ط®ط±ظˆط¬ ط¨ظ†ط¬ط§ط­.' : 'Dأ©connexion effectuأ©e.',
+      text: lang === 'ar' ? 'تم تسجيل الخروج بنجاح.' : 'Déconnexion effectuée.',
       type: 'success',
     });
   };
@@ -182,7 +182,7 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
     const token = accessToken || (await getAccessToken());
     if (!token) {
       setStatusMessage({
-        text: lang === 'ar' ? 'ظٹط±ط¬ظ‰ طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„ ط£ظˆظ„ط§ظ‹' : 'Veuillez vous connecter dâ€™abord',
+        text: lang === 'ar' ? 'يرجى تسجيل الدخول أولاً' : 'Veuillez vous connecter d’abord',
         type: 'error',
       });
       return;
@@ -190,8 +190,8 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
 
     const confirmCreation = window.confirm(
       lang === 'ar'
-        ? 'ظ‡ظ„ طھط±ط؛ط¨ ظپظٹ ط¥ظ†ط´ط§ط، ط¬ط¯ظˆظ„ Google Sheets ط¬ط¯ظٹط¯ ظپظٹ ط­ط³ط§ط¨ Google Drive ط§ظ„ط®ط§طµ ط¨ظƒ ط¨ظ€ 3 طµظپط­ط§طھ (Entrأ©e, Sortie, Synthأ¨se) ظˆظ†ظ‚ظ„ ط§ظ„ط¨ظٹط§ظ†ط§طھ ط§ظ„ط­ط§ظ„ظٹط© ط¥ظ„ظٹظ‡طں'
-        : 'Crأ©er une nouvelle feuille Google Sheets dans votre Google Drive avec les 3 onglets et y exporter vos donnأ©es ?'
+        ? 'هل ترغب في إنشاء جدول Google Sheets جديد في حساب Google Drive الخاص بك بـ 3 صفحات (Entrée, Sortie, Synthèse) ونقل البيانات الحالية إليه؟'
+        : 'Créer une nouvelle feuille Google Sheets dans votre Google Drive avec les 3 onglets et y exporter vos données ?'
     );
     if (!confirmCreation) return;
 
@@ -208,14 +208,14 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
       setStatusMessage({
         text:
           lang === 'ar'
-            ? 'طھظ… ط¥ظ†ط´ط§ط، ط§ظ„ظ…ظ„ظپ ظپظٹ Google Drive ط¨ظ†ط¬ط§ط­ ظˆطھط¬ظ‡ظٹط² ط§ظ„ط£ظˆط±ط§ظ‚ ط§ظ„ط«ظ„ط§ط«!'
-            : 'Fichier Google Sheets crأ©أ© avec succأ¨s dans votre Google Drive !',
+            ? 'تم إنشاء الملف في Google Drive بنجاح وتجهيز الأوراق الثلاث!'
+            : 'Fichier Google Sheets créé avec succès dans votre Google Drive !',
         type: 'success',
       });
       loadDriveFiles();
     } catch (err: any) {
       setStatusMessage({
-        text: err.message || 'Erreur lors de la crأ©ation du fichier',
+        text: err.message || 'Erreur lors de la création du fichier',
         type: 'error',
       });
     } finally {
@@ -234,10 +234,10 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold">
-                {lang === 'ar' ? 'ط§ظ„ط±ط¨ط· ط¨ط­ط³ط§ط¨ Google Drive' : 'Connexion Google Drive & Sheets'}
+                {lang === 'ar' ? 'الربط بحساب Google Drive' : 'Connexion Google Drive & Sheets'}
               </h3>
               <p className="text-xs text-emerald-100">
-                {lang === 'ar' ? 'ظ…ط²ط§ظ…ظ†ط© ط¬ط¯ط§ظˆظ„ ط§ظ„ظ…ط®ط²ظˆظ† ظˆط§ظ„ظ…ط¨ظٹط¹ط§طھ طھظ„ظ‚ط§ط¦ظٹط§ظ‹' : 'Synchronisation directe de vos feuilles'}
+                {lang === 'ar' ? 'مزامنة جداول المخزون والمبيعات تلقائياً' : 'Synchronisation directe de vos feuilles'}
               </p>
             </div>
           </div>
@@ -278,12 +278,12 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-neutral-800">
-                  {lang === 'ar' ? 'ط§ط±ط¨ط· ط§ظ„طھط·ط¨ظٹظ‚ ط¨ط­ط³ط§ط¨ Google ط§ظ„ط®ط§طµ ط¨ظƒ' : 'Connectez votre compte Google'}
+                  {lang === 'ar' ? 'اربط التطبيق بحساب Google الخاص بك' : 'Connectez votre compte Google'}
                 </h4>
                 <p className="text-xs text-neutral-500 max-w-sm mx-auto leading-relaxed">
                   {lang === 'ar'
-                    ? 'ظٹطھظٹط­ ظ„ظƒ ط§ظ„ط±ط¨ط· ط¥ظ†ط´ط§ط، ظ…ظ„ظپ Google Sheets ظ…ط¨ط§ط´ط±ط© ط¯ط§ط®ظ„ ط­ط³ط§ط¨ظƒ ط¹ظ„ظ‰ Google Drive ط¨طµظپط­ط§طھظ‡ ط§ظ„ط«ظ„ط§ط« ظˆطھط­ط¯ظٹط«ظ‡ط§ طھظ„ظ‚ط§ط¦ظٹط§ظ‹ ط¹ظ†ط¯ ظ…ظ„ط، ط§ظ„ظپظˆط±ظ….'
-                    : 'Permet de crأ©er le fichier Google Sheets directement dans votre Drive et de synchroniser les entrأ©es et sorties en temps rأ©el.'}
+                    ? 'يتيح لك الربط إنشاء ملف Google Sheets مباشرة داخل حسابك على Google Drive بصفحاته الثلاث وتحديثها تلقائياً عند ملء الفورم.'
+                    : 'Permet de créer le fichier Google Sheets directement dans votre Drive et de synchroniser les entrées et sorties en temps réel.'}
                 </p>
               </div>
 
@@ -306,7 +306,7 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
                   )}
                   <div>
                     <div className="text-xs font-bold text-neutral-800">
-                      {currentUser.displayName || 'ظ…ط³طھط®ط¯ظ… Google'}
+                      {currentUser.displayName || 'مستخدم Google'}
                     </div>
               <button
                 onClick={handleDirectSignIn}
@@ -324,36 +324,36 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
                   </svg>
                 )}
                 {isDirectSignIn
-                  ? (lang === 'ar' ? 'ط¬ط§ط± ط§ظ„ط¯ط®ظˆظ„ ط§ظ„ظ…ط¨ط§ط´ط±...' : 'Connexion directe...')
-                  : (lang === 'ar' ? 'ط¯ط®ظˆظ„ ظ…ط¨ط§ط´ط± (ظ…ظˆطµظ‰ ط¨ظ‡)' : 'Connexion directe (recommandأ©)')}
+                  ? (lang === 'ar' ? 'جار الدخول المباشر...' : 'Connexion directe...')
+                  : (lang === 'ar' ? 'دخول مباشر (موصى به)' : 'Connexion directe (recommandé)')}
               </button>
               {!isCustomClientId() ? (
                 <button
                   onClick={() => { setDirectMode(!directMode); setClientIdInput(getGoogleClientId()); }}
                   className="text-xs text-emerald-700 hover:underline font-medium mb-2"
                 >
-                  {lang === 'ar' ? 'ط¥ط¹ط¯ط§ط¯ ظ…ط¹ط±ظپ ط¹ظ…ظٹظ„ Google ط§ظ„ط®ط§طµ ط¨ظٹ' : 'Configurer mon Client ID Google'}
+                  {lang === 'ar' ? 'إعداد معرف عميل Google الخاص بي' : 'Configurer mon Client ID Google'}
                 </button>
               ) : (
                 <div className="text-[11px] text-emerald-700 font-medium mb-2 flex items-center justify-center gap-2">
-                  <span>{lang === 'ar' ? 'ظ…ط¹ط±ظپ ط§ظ„ط¹ظ…ظٹظ„ ط§ظ„ط®ط§طµ ظ…ط­ظپظˆط¸ âœ…' : 'Client ID personnel enregistrأ© âœ…'}</span>
+                  <span>{lang === 'ar' ? 'معرف العميل الخاص محفوظ ✅' : 'Client ID personnel enregistré ✅'}</span>
                   <button
                     onClick={() => { clearGoogleClientId(); setClientIdSaved(false); }}
                     className="text-neutral-400 hover:text-red-600 underline"
                   >
-                    {lang === 'ar' ? 'ط¥ط²ط§ظ„ط©' : 'Retirer'}
+                    {lang === 'ar' ? 'إزالة' : 'Retirer'}
                   </button>
                 </div>
               )}
               {directMode && (
                 <div className="max-w-sm mx-auto mb-3 text-start bg-emerald-50 border border-emerald-200 rounded-xl p-3">
                   <div className="text-xs font-bold text-emerald-900 mb-1">
-                    {lang === 'ar' ? 'ظ…ط¹ط±ظپ ط¹ظ…ظٹظ„ Google (Client ID)' : 'Client ID Google'}
+                    {lang === 'ar' ? 'معرف عميل Google (Client ID)' : 'Client ID Google'}
                   </div>
                   <div className="text-[11px] text-emerald-800/80 mb-2">
                     {lang === 'ar'
-                      ? 'ظ…ظ† Google Cloud Console â†گ Credentials â†گ Create OAuth client â†گ Web â†گ ط£ط¶ظپ ط¯ظˆظ…ظٹظ† ظ…ظˆظ‚ط¹ظƒ ظپظٹ Authorized JavaScript origins ط«ظ… ط§ظ„طµظ‚ ط§ظ„ظ…ط¹ط±ظپ ظ‡ظ†ط§.'
-                      : 'Google Cloud Console â†’ Credentials â†’ Create OAuth client â†’ Web â†’ ajoutez votre domaine puis collez lâ€™ID ici.'}
+                      ? 'من Google Cloud Console ← Credentials ← Create OAuth client ← Web ← أضف دومين موقعك في Authorized JavaScript origins ثم الصق المعرف هنا.'
+                      : 'Google Cloud Console → Credentials → Create OAuth client → Web → ajoutez votre domaine puis collez l’ID ici.'}
                   </div>
                   <input
                     value={clientIdInput}
@@ -367,11 +367,11 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
                     onClick={handleSaveClientId}
                     className="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition"
                   >
-                    {lang === 'ar' ? 'ط­ظپط¸ ط§ظ„ظ…ط¹ط±ظپ' : 'Enregistrer'}
+                    {lang === 'ar' ? 'حفظ المعرف' : 'Enregistrer'}
                   </button>
                 </div>
               )}
-              <div className="text-[11px] text-neutral-400 font-medium my-2">â€” {lang === 'ar' ? 'ط£ظˆ' : 'ou'} â€”</div>
+              <div className="text-[11px] text-neutral-400 font-medium my-2">— {lang === 'ar' ? 'أو' : 'ou'} —</div>
 
                     <div className="text-[11px] text-neutral-500 font-mono">
                       {currentUser.email}
@@ -382,10 +382,10 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
                 <button
                   onClick={handleLogout}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-300 hover:bg-white text-neutral-600 hover:text-red-600 text-xs font-medium transition"
-                  title="طھط³ط¬ظٹظ„ ط§ظ„ط®ط±ظˆط¬"
+                  title="تسجيل الخروج"
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  <span>{lang === 'ar' ? 'ط®ط±ظˆط¬' : 'Dأ©connexion'}</span>
+                  <span>{lang === 'ar' ? 'خروج' : 'Déconnexion'}</span>
                 </button>
               </div>
 
@@ -394,11 +394,11 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-bold text-neutral-800">
                     <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                    <span>{lang === 'ar' ? 'ظ…ظ„ظپ Google Sheet ط§ظ„ظ†ط´ط·:' : 'Feuille Google Sheets liأ©e :'}</span>
+                    <span>{lang === 'ar' ? 'ملف Google Sheet النشط:' : 'Feuille Google Sheets liée :'}</span>
                   </div>
                   {activeSpreadsheet && (
                     <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
-                      {lang === 'ar' ? 'ظ…طھطµظ„ ط¨ط§ظ„ظ…ط®ط²ظˆظ†' : 'Connectأ©'}
+                      {lang === 'ar' ? 'متصل بالمخزون' : 'Connecté'}
                     </span>
                   )}
                 </div>
@@ -422,7 +422,7 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
                         className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition shadow-xs"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
-                        <span>{lang === 'ar' ? 'ظپطھط­ ط§ظ„ظ…ظ„ظپ ظپظٹ Google Sheets' : 'Ouvrir dans Google Sheets'}</span>
+                        <span>{lang === 'ar' ? 'فتح الملف في Google Sheets' : 'Ouvrir dans Google Sheets'}</span>
                       </a>
 
                       <button
@@ -431,7 +431,7 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
                         className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-700 text-xs font-medium transition"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>{lang === 'ar' ? 'ط¥ظ†ط´ط§ط، ظ…ظ„ظپ ط¢ط®ط± ط¬ط¯ظٹط¯' : 'Crأ©er un autre fichier'}</span>
+                        <span>{lang === 'ar' ? 'إنشاء ملف آخر جديد' : 'Créer un autre fichier'}</span>
                       </button>
                     </div>
                   </div>
@@ -439,8 +439,8 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
                   <div className="space-y-3 text-center py-3">
                     <p className="text-xs text-neutral-500">
                       {lang === 'ar'
-                        ? 'ظ„ظ… ظٹطھظ… ط¥ظ†ط´ط§ط، ظ…ظ„ظپ Google Sheet ظپظٹ ط­ط³ط§ط¨ظƒ ط¨ط¹ط¯. ط§ط¶ط؛ط· ط£ط¯ظ†ط§ظ‡ ظ„ط¥ظ†ط´ط§ط¦ظ‡ ظˆظ†ظ‚ظ„ ط§ظ„ط¨ظٹط§ظ†ط§طھ ط¥ظ„ظٹظ‡ طھظ„ظ‚ط§ط¦ظٹط§ظ‹.'
-                        : 'Aucun fichier liأ©. Cliquez ci-dessous pour crأ©er le fichier complet dans votre Google Drive.'}
+                        ? 'لم يتم إنشاء ملف Google Sheet في حسابك بعد. اضغط أدناه لإنشائه ونقل البيانات إليه تلقائياً.'
+                        : 'Aucun fichier lié. Cliquez ci-dessous pour créer le fichier complet dans votre Google Drive.'}
                     </p>
 
                     <button
@@ -452,12 +452,12 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
                       {isCreatingFile ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>ط¬ط§ط±ظٹ ط§ظ„ط¥ظ†ط´ط§ط، ظپظٹ Google Drive...</span>
+                          <span>جاري الإنشاء في Google Drive...</span>
                         </>
                       ) : (
                         <>
                           <Plus className="w-4 h-4" />
-                          <span>{lang === 'ar' ? 'ط¥ظ†ط´ط§ط، ظ…ظ„ظپ ط§ظ„ظ…ط®ط²ظˆظ† ظپظٹ Google Drive ط§ظ„ط¢ظ†' : 'Crأ©er le fichier dans Google Drive'}</span>
+                          <span>{lang === 'ar' ? 'إنشاء ملف المخزون في Google Drive الآن' : 'Créer le fichier dans Google Drive'}</span>
                         </>
                       )}
                     </button>
@@ -469,12 +469,12 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
               <div className="p-3.5 bg-neutral-50 border border-neutral-200 rounded-xl flex items-center justify-between">
                 <div>
                   <div className="text-xs font-bold text-neutral-800">
-                    {lang === 'ar' ? 'ط§ظ„ظ…ط²ط§ظ…ظ†ط© ط§ظ„طھظ„ظ‚ط§ط¦ظٹط© ظ…ط¹ Google Drive' : 'Synchronisation automatique'}
+                    {lang === 'ar' ? 'المزامنة التلقائية مع Google Drive' : 'Synchronisation automatique'}
                   </div>
                   <div className="text-[11px] text-neutral-500">
                     {lang === 'ar'
-                      ? 'ط¥ط¶ط§ظپط© ط§ظ„ط³ط·ط± ظپظˆط±ط§ظ‹ ط¥ظ„ظ‰ ظ…ظ„ظپ Google Sheet ط¹ظ†ط¯ ط¥ط±ط³ط§ظ„ ط§ط³طھظ…ط§ط±ط© ظ‚ظˆظ‚ظ„ ظپظˆط±ظ…'
-                      : 'Ajoute automatiquement la ligne dans votre Drive lors de lâ€™envoi'}
+                      ? 'إضافة السطر فوراً إلى ملف Google Sheet عند إرسال استمارة قوقل فورم'
+                      : 'Ajoute automatiquement la ligne dans votre Drive lors de l’envoi'}
                   </div>
                 </div>
 
@@ -493,7 +493,7 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
               {driveFiles.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs font-bold text-neutral-700">
-                    <span>{lang === 'ar' ? 'ظ…ظ„ظپط§طھ Sheets ظپظٹ ط­ط³ط§ط¨ظƒ:' : 'Feuilles trouvأ©es sur votre Drive :'}</span>
+                    <span>{lang === 'ar' ? 'ملفات Sheets في حسابك:' : 'Feuilles trouvées sur votre Drive :'}</span>
                     <button
                       onClick={loadDriveFiles}
                       className="text-neutral-500 hover:text-neutral-800"
