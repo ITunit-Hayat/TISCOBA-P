@@ -287,27 +287,6 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
                 </p>
               </div>
 
-            </div>
-          ) : (
-            /* Connected User Profile Card */
-            <div className="space-y-5">
-              <div className="flex items-center justify-between p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl">
-                <div className="flex items-center gap-3">
-                  {currentUser.photoURL ? (
-                    <img
-                      src={currentUser.photoURL}
-                      alt={currentUser.displayName || 'User'}
-                      className="w-10 h-10 rounded-full border border-emerald-300"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-sm">
-                      {currentUser.email?.[0].toUpperCase() || 'U'}
-                    </div>
-                  )}
-                  <div>
-                    <div className="text-xs font-bold text-neutral-800">
-                      {currentUser.displayName || 'مستخدم Google'}
-                    </div>
               <button
                 onClick={handleDirectSignIn}
                 disabled={isDirectSignIn || isSigningIn}
@@ -371,7 +350,28 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
                   </button>
                 </div>
               )}
-              <div className="text-[11px] text-neutral-400 font-medium my-2">— {lang === 'ar' ? 'أو' : 'ou'} —</div>
+
+            </div>
+          ) : (
+            /* Connected User Profile Card */
+            <div className="space-y-5">
+              <div className="flex items-center justify-between p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl">
+                <div className="flex items-center gap-3">
+                  {currentUser.photoURL ? (
+                    <img
+                      src={currentUser.photoURL}
+                      alt={currentUser.displayName || 'User'}
+                      className="w-10 h-10 rounded-full border border-emerald-300"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-sm">
+                      {currentUser.email?.[0].toUpperCase() || 'U'}
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-xs font-bold text-neutral-800">
+                      {currentUser.displayName || 'مستخدم Google'}
+                    </div>
 
                     <div className="text-[11px] text-neutral-500 font-mono">
                       {currentUser.email}
