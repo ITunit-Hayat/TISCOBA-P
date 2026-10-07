@@ -20,7 +20,7 @@ import {
   ArrowUpRight
 } from 'lucide-react';
 import { EntreeItem, SortieItem, PRODUCTS } from '../types/stock';
-import { readAllSheetsData, writeAllDataToGoogleSheet } from '../services/googleDriveSheets';
+import { readAllSheetsData, writeAllDataToGoogleSheet, readSheetsDataFromPublicCsv, extractSpreadsheetId } from '../services/googleDriveSheets';
 
 interface LiveGoogleSheetsDirectViewProps {
   entrees: EntreeItem[];
@@ -64,6 +64,10 @@ export const LiveGoogleSheetsDirectView: React.FC<LiveGoogleSheetsDirectViewProp
   // Quick Add state (dialog right inside this view)
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [quickAddType, setQuickAddType] = useState<'entree' | 'sortie'>('entree');
+  // Easy sync via public link (no login needed)
+  const [publicLink, setPublicLink] = useState('');
+  const [isPullingPublic, setIsPullingPublic] = useState(false);
+  const [publicError, setPublicError] = useState<string | null>(null);
   const [quickFormData, setQuickFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     client: '',
@@ -113,6 +117,36 @@ export const LiveGoogleSheetsDirectView: React.FC<LiveGoogleSheetsDirectViewProp
   };
 
   // Push all data to Google Sheet
+  // Easy pull via public "Anyone with the link" CSV export (no login)
+  const handlePullFromPublicLink = async () => {
+    const link = publicLink.trim() || activeSpreadsheet?.url || 'https://docs.google.com/spreadsheets/d/19elAKrwk2loMHRde7sNZAA-F8XGNcWFLqVUEHLJaf6I/edit';
+    setIsPullingPublic(true);
+    setPublicError(null);
+    setMessage(null);
+    try {
+      const data = await readSheetsDataFromPublicCsv(link);
+      onUpdateEntreesAndSorties(data.entrees, data.sorties);
+      try {
+        const sid = extractSpreadsheetId(link);
+        if (sid && onSpreadsheetChange) {
+          onSpreadsheetChange({
+            id: sid,
+            url: `https://docs.google.com/spreadsheets/d/${sid}/edit`,
+            title: 'Google Sheets (رابط عام)',
+          });
+        }
+      } catch {}
+      const msg = lang === 'ar'
+        ? `تم سحب ${data.entrees.length} دخول و ${data.sorties.length} خروج من Google Sheets بنجاح ✅`
+        : `${data.entrees.length} entrées et ${data.sorties.length} sorties importées ✅`;
+      setMessage(msg);
+    } catch (err: any) {
+      setPublicError(err?.message || (lang === 'ar' ? 'تعذر قراءة الجدول' : 'Lecture impossible'));
+    } finally {
+      setIsPullingPublic(false);
+    }
+  };
+
   const handlePushToSheet = async () => {
     if (!activeSpreadsheet?.id || !accessToken) {
       onOpenDriveModal();
@@ -349,6 +383,45 @@ export const LiveGoogleSheetsDirectView: React.FC<LiveGoogleSheetsDirectViewProp
           <button
             type="button"
             onClick={() => {
+      {/* 0. Easy Sync via public link (no login needed) */}
+      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 sm:p-5">
+        <div className="flex items-center gap-2 mb-1">
+          <Database className="w-5 h-5 text-emerald-700" />
+          <h3 className="font-bold text-emerald-900 text-sm sm:text-base">
+            {lang === 'ar' ? 'مزامنة سهلة بدون تسجيل دخول' : 'Synchronisation facile (sans connexion)'}
+          </h3>
+        </div>
+        <p className="text-xs text-emerald-800/80 mb-3">
+          {lang === 'ar'
+            ? 'شارك الجدول كـ «أي شخص لديه الرابط: عارض» ثم الصق الرابط واضغط سحب — تصل بيانات الدخول والخروج فورا.'
+            : 'Partagez le fichier «Toute personne disposant du lien: Lecteur», collez le lien puis importez.'}
+        </p>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            value={publicLink}
+            onChange={(e) => setPublicLink(e.target.value)}
+            placeholder="https://docs.google.com/spreadsheets/d/..."
+            dir="ltr"
+            className="flex-1 px-3 py-2.5 rounded-xl border border-emerald-300 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+          <button
+            onClick={handlePullFromPublicLink}
+            disabled={isPullingPublic}
+            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold transition flex items-center justify-center gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${isPullingPublic ? 'animate-spin' : ''}`} />
+            {isPullingPublic
+              ? (lang === 'ar' ? 'جار السحب...' : 'Import...')
+              : (lang === 'ar' ? 'سحب من الرابط' : 'Importer du lien')}
+          </button>
+        </div>
+        {publicError && (
+          <div className="mt-2 text-xs font-bold text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+            {publicError}
+          </div>
+        )}
+      </div>
+
               setQuickAddType('entree');
               setIsQuickAddOpen(true);
             }}

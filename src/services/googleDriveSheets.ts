@@ -1,4 +1,4 @@
-import { EntreeItem, SortieItem } from '../types/stock';
+﻿import { EntreeItem, SortieItem } from '../types/stock';
 
 export interface DriveFileInfo {
   id: string;
@@ -46,7 +46,7 @@ export async function getSpreadsheetMetadata(
 
   if (!res.ok) {
     const errorData = await res.json();
-    throw new Error(errorData.error?.message || 'Impossible d’accéder au fichier Google Sheets');
+    throw new Error(errorData.error?.message || 'Impossible dâ€™accأ©der au fichier Google Sheets');
   }
 
   const data = await res.json();
@@ -62,9 +62,9 @@ export async function getSpreadsheetMetadata(
 /**
  * Creates a complete Google Spreadsheet directly in the user's Google Drive
  * with 3 interconnected sheets:
- * 1. Feuille 1 Entrée
+ * 1. Feuille 1 Entrأ©e
  * 2. Feuille 2 Sortie
- * 3. Feuille 3 Synthèse (with automatic formulas)
+ * 3. Feuille 3 Synthأ¨se (with automatic formulas)
  */
 export async function createInventorySpreadsheet(
   accessToken: string,
@@ -88,7 +88,7 @@ export async function createInventorySpreadsheet(
       sheets: [
         {
           properties: {
-            title: 'Feuille 1 Entrée',
+            title: 'Feuille 1 Entrأ©e',
             gridProperties: { rowCount: 200, columnCount: 10 },
           },
         },
@@ -100,7 +100,7 @@ export async function createInventorySpreadsheet(
         },
         {
           properties: {
-            title: 'Feuille 3 Synthèse',
+            title: 'Feuille 3 Synthأ¨se',
             gridProperties: { rowCount: 50, columnCount: 10 },
           },
         },
@@ -110,7 +110,7 @@ export async function createInventorySpreadsheet(
 
   if (!createRes.ok) {
     const errorData = await createRes.json();
-    throw new Error(errorData.error?.message || 'Erreur lors de la création du fichier Google Sheets');
+    throw new Error(errorData.error?.message || 'Erreur lors de la crأ©ation du fichier Google Sheets');
   }
 
   const createData = await createRes.json();
@@ -144,9 +144,9 @@ export async function writeAllDataToGoogleSheet(
         },
         body: JSON.stringify({
           ranges: [
-            "'Feuille 1 Entrée'!A1:Z500",
+            "'Feuille 1 Entrأ©e'!A1:Z500",
             "'Feuille 2 Sortie'!A1:Z500",
-            "'Feuille 3 Synthèse'!A1:Z50",
+            "'Feuille 3 Synthأ¨se'!A1:Z50",
           ],
         }),
       }
@@ -155,7 +155,7 @@ export async function writeAllDataToGoogleSheet(
     console.warn('Clear range warning:', clearErr);
   }
 
-  // Feuille 1 Entrée Values (pure data rows, no circular total row in data stream)
+  // Feuille 1 Entrأ©e Values (pure data rows, no circular total row in data stream)
   const entreeRows: any[][] = [
     ['Date', '152 Vert', '152 Bleu', '124 Vert', '124 Bleu', 'Notes'],
   ];
@@ -187,39 +187,39 @@ export async function writeAllDataToGoogleSheet(
     ]);
   });
 
-  // Feuille 3 Synthèse Values with standard English Google Sheets formulas and commas
+  // Feuille 3 Synthأ¨se Values with standard English Google Sheets formulas and commas
   const syntheseRows: any[][] = [
-    ['Produit', 'Total Entrées', 'Total Sorties', 'Stock Restant', 'Statut du Stock'],
+    ['Produit', 'Total Entrأ©es', 'Total Sorties', 'Stock Restant', 'Statut du Stock'],
     [
       '152 Vert',
-      "=SUM('Feuille 1 Entrée'!B2:B)",
+      "=SUM('Feuille 1 Entrأ©e'!B2:B)",
       "=SUM('Feuille 2 Sortie'!C2:C)",
       '=B2 - C2',
-      '=IF(D2<=10, "⚠️ Stock Faible", "✅ Disponible")',
+      '=IF(D2<=10, "âڑ ï¸ڈ Stock Faible", "âœ… Disponible")',
     ],
     [
       '152 Bleu',
-      "=SUM('Feuille 1 Entrée'!C2:C)",
+      "=SUM('Feuille 1 Entrأ©e'!C2:C)",
       "=SUM('Feuille 2 Sortie'!D2:D)",
       '=B3 - C3',
-      '=IF(D3<=10, "⚠️ Stock Faible", "✅ Disponible")',
+      '=IF(D3<=10, "âڑ ï¸ڈ Stock Faible", "âœ… Disponible")',
     ],
     [
       '124 Vert',
-      "=SUM('Feuille 1 Entrée'!D2:D)",
+      "=SUM('Feuille 1 Entrأ©e'!D2:D)",
       "=SUM('Feuille 2 Sortie'!E2:E)",
       '=B4 - C4',
-      '=IF(D4<=10, "⚠️ Stock Faible", "✅ Disponible")',
+      '=IF(D4<=10, "âڑ ï¸ڈ Stock Faible", "âœ… Disponible")',
     ],
     [
       '124 Bleu',
-      "=SUM('Feuille 1 Entrée'!E2:E)",
+      "=SUM('Feuille 1 Entrأ©e'!E2:E)",
       "=SUM('Feuille 2 Sortie'!F2:F)",
       '=B5 - C5',
-      '=IF(D5<=10, "⚠️ Stock Faible", "✅ Disponible")',
+      '=IF(D5<=10, "âڑ ï¸ڈ Stock Faible", "âœ… Disponible")',
     ],
     ['', '', '', '', ''],
-    ['Chiffre d’affaires Total (Montant)', "=SUM('Feuille 2 Sortie'!G2:G)", 'DZD', '', ''],
+    ['Chiffre dâ€™affaires Total (Montant)', "=SUM('Feuille 2 Sortie'!G2:G)", 'DZD', '', ''],
   ];
 
   const batchRes = await fetch(
@@ -234,7 +234,7 @@ export async function writeAllDataToGoogleSheet(
         valueInputOption: 'USER_ENTERED',
         data: [
           {
-            range: "'Feuille 1 Entrée'!A1",
+            range: "'Feuille 1 Entrأ©e'!A1",
             values: entreeRows,
           },
           {
@@ -242,7 +242,7 @@ export async function writeAllDataToGoogleSheet(
             values: sortieRows,
           },
           {
-            range: "'Feuille 3 Synthèse'!A1",
+            range: "'Feuille 3 Synthأ¨se'!A1",
             values: syntheseRows,
           },
         ],
@@ -251,21 +251,107 @@ export async function writeAllDataToGoogleSheet(
   );
 
   if (!batchRes.ok) {
-    const err = await batchRes.json();
-    console.warn('Batch update values failed:', err);
-    throw new Error(err.error?.message || 'Erreur lors de la mise à jour des feuilles Google Sheets');
+    const errorData = await batchRes.json();
+    throw new Error(errorData.error?.message || 'Erreur lors de la synchronisation avec Google Sheets');
   }
 }
 
 /**
- * Reads live data from Google Sheets directly (pulls Entrées and Sorties)
+ * Builds a public CSV export URL for a sheet tab (works when the file is
+ * shared as "Anyone with the link can view" â€” no login needed).
+ */
+export function buildCsvExportUrl(spreadsheetId: string, sheetName: string): string {
+  return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+}
+
+/** Minimal CSV parser handling quoted cells. */
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { cell += '"'; i++; }
+        else { inQuotes = false; }
+      } else { cell += c; }
+    } else {
+      if (c === '"') { inQuotes = true; }
+      else if (c === ',') { row.push(cell); cell = ''; }
+      else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+      else if (c !== '\r') { cell += c; }
+    }
+  }
+  row.push(cell);
+  rows.push(row);
+  return rows;
+}
+
+const isHeaderOrTotalRow = (firstCell: string): boolean => {
+  const n = firstCell.trim().toUpperCase();
+  return n === '' || n === 'DATE' || n === 'PRODUIT' || n.includes('TOTAL') || n.includes('CHIFFRE');
+};
+
+const num = (v: any): number => Number(String(v ?? '').replace(/\s/g, '').replace(',', '.')) || 0;
+
+/**
+ * Reads Entree + Sortie data from a Sheet shared as
+ * "Anyone with the link can view" â€” no Firebase login needed.
+ */
+export async function readSheetsDataFromPublicCsv(
+  spreadsheetInput: string
+): Promise<{ entrees: EntreeItem[]; sorties: SortieItem[] }> {
+  const spreadsheetId = extractSpreadsheetId(spreadsheetInput);
+  if (!spreadsheetId) throw new Error('ط±ط§ط¨ط· ط§ظ„ط¬ط¯ظˆظ„ ط؛ظٹط± طµط§ظ„ط­. ط§ظ„طµظ‚ ط±ط§ط¨ط· Google Sheets ظƒط§ظ…ظ„ط§.');
+  const fetchCsv = async (sheetName: string): Promise<string[][]> => {
+    const res = await fetch(buildCsvExportUrl(spreadsheetId, sheetName));
+    if (!res.ok) throw new Error('طھط¹ط°ط± ظ‚ط±ط§ط،ط© ط§ظ„ط¬ط¯ظˆظ„. ط´ط§ط±ظƒظ‡ ظƒظ€ آ«ط£ظٹ ط´ط®طµ ظ„ط¯ظٹظ‡ ط§ظ„ط±ط§ط¨ط·: ط¹ط§ط±ط¶آ» ط«ظ… ط­ط§ظˆظ„ ظ…ط¬ط¯ط¯ط§.');
+    const text = await res.text();
+    if (text.trim().startsWith('<')) throw new Error('ط§ظ„ط¬ط¯ظˆظ„ ط؛ظٹط± ظ…طھط§ط­ ظ„ظ„ط¹ط±ط¶ ط§ظ„ط¹ط§ظ…. ط§ظپطھط­ ط§ظ„ط¬ط¯ظˆظ„ â†گ ظ…ط´ط§ط±ظƒط© â†گ آ«ط£ظٹ ط´ط®طµ ظ„ط¯ظٹظ‡ ط§ظ„ط±ط§ط¨ط·آ» â†گ ط¹ط§ط±ط¶.');
+    return parseCsv(text);
+  };
+  const [entreeRows, sortieRows] = await Promise.all([
+    fetchCsv('Feuille 1 Entrأ©e'),
+    fetchCsv('Feuille 2 Sortie'),
+  ]);
+  const entrees: EntreeItem[] = [];
+  entreeRows.forEach((r, idx) => {
+    if (isHeaderOrTotalRow(String(r[0] ?? ''))) return;
+    entrees.push({
+      id: `csv-entree-${idx}-${Date.now()}`,
+      date: String(r[0] ?? '').trim(),
+      qty152Vert: num(r[1]), qty152Bleu: num(r[2]),
+      qty124Vert: num(r[3]), qty124Bleu: num(r[4]),
+      notes: r[5] ? String(r[5]) : '',
+    });
+  });
+  const sorties: SortieItem[] = [];
+  sortieRows.forEach((r, idx) => {
+    if (isHeaderOrTotalRow(String(r[0] ?? ''))) return;
+    sorties.push({
+      id: `csv-sortie-${idx}-${Date.now()}`,
+      date: String(r[0] ?? '').trim(),
+      client: r[1] ? String(r[1]) : 'Client',
+      qty152Vert: num(r[2]), qty152Bleu: num(r[3]),
+      qty124Vert: num(r[4]), qty124Bleu: num(r[5]),
+      montant: num(r[6]),
+      notes: r[7] ? String(r[7]) : '',
+    });
+  });
+  return { entrees, sorties };
+}
+
+/**
+ * Reads live data from Google Sheets directly (pulls Entrأ©es and Sorties)
  */
 export async function readAllSheetsData(
   accessToken: string,
   spreadsheetId: string
 ): Promise<{ entrees: EntreeItem[]; sorties: SortieItem[] }> {
   // Fetch up to 500 rows across full column ranges
-  const range1 = encodeURIComponent("'Feuille 1 Entrée'!A2:F500");
+  const range1 = encodeURIComponent("'Feuille 1 Entrأ©e'!A2:F500");
   const range2 = encodeURIComponent("'Feuille 2 Sortie'!A2:H500");
 
   const [res1, res2] = await Promise.all([
@@ -325,7 +411,7 @@ export async function readAllSheetsData(
 }
 
 /**
- * Appends a new Entrée row to existing Google Spreadsheet
+ * Appends a new Entrأ©e row to existing Google Spreadsheet
  */
 export async function appendEntreeRow(
   accessToken: string,
@@ -342,7 +428,7 @@ export async function appendEntreeRow(
   ];
 
   const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'Feuille 1 Entrée'!A:F:append?valueInputOption=USER_ENTERED`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'Feuille 1 Entrأ©e'!A:F:append?valueInputOption=USER_ENTERED`,
     {
       method: 'POST',
       headers: {
@@ -357,7 +443,7 @@ export async function appendEntreeRow(
 
   if (!res.ok) {
     const errorData = await res.json();
-    throw new Error(errorData.error?.message || 'Erreur lors de l’ajout de l’entrée dans Google Sheets');
+    throw new Error(errorData.error?.message || 'Erreur lors de lâ€™ajout de lâ€™entrأ©e dans Google Sheets');
   }
 }
 
@@ -396,7 +482,7 @@ export async function appendSortieRow(
 
   if (!res.ok) {
     const errorData = await res.json();
-    throw new Error(errorData.error?.message || 'Erreur lors de l’ajout de la sortie dans Google Sheets');
+    throw new Error(errorData.error?.message || 'Erreur lors de lâ€™ajout de la sortie dans Google Sheets');
   }
 }
 
