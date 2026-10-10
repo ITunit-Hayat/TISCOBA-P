@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { fetchInventory, sendInventoryOp, InventoryOp } from './services/inventoryApi';
 import { 
   FileSpreadsheet, 
   Cloud, 
@@ -14,6 +13,10 @@ import { LiveGoogleSheetsDirectView } from './components/LiveGoogleSheetsDirectV
 import { GoogleDriveSyncModal } from './components/GoogleDriveSyncModal';
 import { initAuth, getAccessToken, googleSignIn, isAccessDeniedError } from './services/googleAuth';
 import { 
+  writeAllDataToGoogleSheet, 
+  readAllSheetsData,
+  appendEntreeRow,
+  appendSortieRow,
   createInventorySpreadsheet, 
   listDriveSpreadsheets,
   getSpreadsheetMetadata,
@@ -150,6 +153,16 @@ export default function App() {
   // Real-time cross-tab auto synchronization
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'stock_entrees_v2' && e.newValue) {
+        try {
+          setEntrees(JSON.parse(e.newValue));
+        } catch {}
+      }
+      if (e.key === 'stock_sorties_v2' && e.newValue) {
+        try {
+          setSorties(JSON.parse(e.newValue));
+        } catch {}
+      }
       if (e.key === 'stock_auto_sync_v2' && e.newValue) {
         setAutoSync(e.newValue === 'true');
       }
@@ -163,65 +176,54 @@ export default function App() {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Entrees & Sorties: NEVER read from localStorage. The Google Sheet is the only source of truth.
-  const [entrees, setEntrees] = useState<EntreeItem[]>([]);
-  const [sorties, setSorties] = useState<SortieItem[]>([]);
-  const [dataReady, setDataReady] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const dataReadyRef = useRef(false);
-  const [localOnly, setLocalOnly] = useState<{ e: EntreeItem[]; s: SortieItem[] } | null>(null);
-  const migrationChecked = useRef(false);
-  const entreesRef = useRef<EntreeItem[]>([]);
-  const sortiesRef = useRef<SortieItem[]>([]);
-  entreesRef.current = entrees;
-  sortiesRef.current = sorties;
-
-  const loadFromSheet = async (): Promise<boolean> => {
+  // Entrees & Sorties state
+  const [entrees, setEntrees] = useState<EntreeItem[]>(() => {
     try {
-      const data = await fetchInventory();
-      setEntrees(data.entrees);
-      setSorties(data.sorties);
-      dataReadyRef.current = true;
-      setDataReady(true);
-      // One-time check: rows that exist only in this browser (old versions kept them in localStorage)
-      if (!migrationChecked.current) {
-        migrationChecked.current = true;
-        try {
-          if (localStorage.getItem('stock_migration_ignored_v3') !== '1') {
-            const le = JSON.parse(localStorage.getItem('stock_entrees_v2') || '[]');
-            const ls = JSON.parse(localStorage.getItem('stock_sorties_v2') || '[]');
-            const eIds = new Set(data.entrees.map((x) => x.id));
-            const sIds = new Set(data.sorties.map((x) => x.id));
-            const e = Array.isArray(le) ? le.filter((x: any) => x && x.id && !eIds.has(x.id)) : [];
-            const sl = Array.isArray(ls) ? ls.filter((x: any) => x && x.id && !sIds.has(x.id)) : [];
-            if (e.length || sl.length) setLocalOnly({ e, s: sl });
-          }
-        } catch {}
-      }
-      setLoadError(null);
-      setLastSyncTime(new Date());
-      return true;
-    } catch (err: any) {
-      // Keep what is already displayed (it came from the sheet); only report if we never loaded.
-      if (!dataReadyRef.current) setLoadError(err?.message || 'SHEET_READ_FAILED');
-      return false;
+      const saved = localStorage.getItem('stock_entrees_v2');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
     }
-  };
+  });
 
-  // Load on open (any browser / phone), refresh when the tab becomes visible, and poll every 30s
+  const [sorties, setSorties] = useState<SortieItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('stock_sorties_v2');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   useEffect(() => {
-    loadFromSheet();
-    const timer = setInterval(() => loadFromSheet(), 30000);
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') loadFromSheet();
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('online', onVisible);
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('online', onVisible);
-    };
+    try {
+      localStorage.setItem('stock_entrees_v2', JSON.stringify(entrees));
+    } catch {}
+  }, [entrees]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('stock_sorties_v2', JSON.stringify(sorties));
+    } catch {}
+  }, [sorties]);
+
+  // Sync inventory with backend server cache for instant team sharing
+  useEffect(() => {
+    fetch('/api/inventory')
+      .then((r) => r.json())
+      .then((res) => {
+        if (res?.success && res.data) {
+          const remoteE = res.data.entrees;
+          const remoteS = res.data.sorties;
+          if (Array.isArray(remoteE) && Array.isArray(remoteS)) {
+            if (remoteE.length > 0 || remoteS.length > 0) {
+              setEntrees((prev) => (prev.length === 0 ? remoteE : prev));
+              setSorties((prev) => (prev.length === 0 ? remoteS : prev));
+            }
+          }
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Compute live stock
@@ -262,6 +264,66 @@ export default function App() {
       qty124Bleu: Math.max(0, totalIn.qty124Bleu - totalOut.qty124Bleu),
     };
   }, [entrees, sorties]);
+
+  // 📥 Read live data from Google Sheets database on initial load or sheet change
+  const initialLoadDone = useRef(false);
+  const hasLoadedRemoteData = useRef(false);
+  useEffect(() => {
+    if (!activeSpreadsheet?.id) return;
+
+    let isSubscribed = true;
+    const fetchFromSheetsDb = async () => {
+      const token = accessToken || (await getAccessToken());
+      if (!token || !activeSpreadsheet?.id) return;
+
+      setIsSyncingCloud(true);
+      try {
+        const { entrees: sheetE, sorties: sheetS, isLegacy4Columns } = await readAllSheetsData(token, activeSpreadsheet.id);
+        if (!isSubscribed) return;
+
+        setHasLegacyColumns(Boolean(isLegacy4Columns));
+
+        // Google Sheets is the master source of truth across all devices and browsers
+        setEntrees(sheetE);
+        setSorties(sheetS);
+        try {
+          localStorage.setItem('stock_entrees_v2', JSON.stringify(sheetE));
+          localStorage.setItem('stock_sorties_v2', JSON.stringify(sheetS));
+        } catch {}
+        hasLoadedRemoteData.current = true;
+        setTokenNeedsRefresh(false);
+        setLastSyncTime(new Date());
+        lastSavedHash.current = `${sheetE.length}_${sheetS.length}_${JSON.stringify(sheetE[0] || {})}_${JSON.stringify(sheetS[0] || {})}`;
+        if (!initialLoadDone.current) {
+          initialLoadDone.current = true;
+          if (sheetE.length > 0 || sheetS.length > 0) {
+            setAutoSyncToast(
+              lang === 'ar'
+                ? `✓ تم تحميل قاعدة البيانات من Google Sheets (${sheetE.length + sheetS.length} عملية)`
+                : `✓ Base Google Sheets chargée (${sheetE.length + sheetS.length} lignes)`
+            );
+            setTimeout(() => setAutoSyncToast(null), 3000);
+          }
+        }
+      } catch (err: any) {
+        if (err?.message === 'GOOGLE_AUTH_EXPIRED') {
+          setTokenNeedsRefresh(true);
+          // Expired token: clear cached accessToken so future calls know auth is expired
+          setAccessToken(null);
+          localStorage.removeItem('gdrive_access_token');
+        } else {
+          console.warn('Initial load from Google Sheets:', err);
+        }
+      } finally {
+        if (isSubscribed) setIsSyncingCloud(false);
+      }
+    };
+
+    fetchFromSheetsDb();
+    return () => {
+      isSubscribed = false;
+    };
+  }, [activeSpreadsheet?.id, accessToken]);
 
   // Connect Google Drive in 1 single click & immediately pull data!
   const handleConnectDriveOnce = async () => {
@@ -347,9 +409,39 @@ export default function App() {
       await saveSharedSheetConfig(effectiveSheet, result.user.email || 'User', result.accessToken);
       setSharedTeamSheet(effectiveSheet);
 
-      await loadFromSheet();
-      setAutoSyncToast(lang === 'ar' ? '✅ تم الربط — البيانات المعروضة هي ما في الجدول' : '✅ Connecté — données issues du tableau');
-      setTimeout(() => setAutoSyncToast(null), 3000);
+      // Read from Google Sheets database or seed it!
+      if (effectiveSheet) {
+        setIsSyncingCloud(true);
+        try {
+          const data = await readAllSheetsData(result.accessToken, effectiveSheet.id);
+          if (data.entrees.length > 0 || data.sorties.length > 0) {
+            isFetchingFromRemote.current = true;
+            setEntrees(data.entrees);
+            setSorties(data.sorties);
+            lastSavedHash.current = `${data.entrees.length}_${data.sorties.length}_${JSON.stringify(data.entrees[0] || {})}_${JSON.stringify(data.sorties[0] || {})}`;
+            setLastSyncTime(new Date());
+            setAutoSyncToast(
+              lang === 'ar'
+                ? `✅ تم ربط ملف "${effectiveSheet.title}" المشترك واسترجاع ${data.entrees.length + data.sorties.length} عملية بنجاح!`
+                : '✅ Connecté à Google Sheets avec succès !'
+            );
+          } else {
+            await writeAllDataToGoogleSheet(result.accessToken, effectiveSheet.id, entrees, sorties);
+            lastSavedHash.current = `${entrees.length}_${sorties.length}_${JSON.stringify(entrees[0] || {})}_${JSON.stringify(sorties[0] || {})}`;
+            setLastSyncTime(new Date());
+            setAutoSyncToast(
+              lang === 'ar'
+                ? `✅ تم ربط وحفظ البيانات في Google Sheets: "${effectiveSheet.title}"`
+                : '✅ Connecté à Google Sheets avec succès !'
+            );
+          }
+        } catch (syncErr: any) {
+          console.warn('Initial sync error:', syncErr);
+        } finally {
+          setIsSyncingCloud(false);
+        }
+        setTimeout(() => setAutoSyncToast(null), 3500);
+      }
     } catch (err: any) {
       console.error('Drive connection error:', err);
       if (isAccessDeniedError(err)) {
@@ -412,9 +504,30 @@ export default function App() {
       await saveSharedSheetConfig(sheetObj, user?.email || 'User', token);
       setSharedTeamSheet(sheetObj);
 
-      await loadFromSheet();
-      setAutoSyncToast(lang === 'ar' ? `✅ تم ربط "${sheetObj.title}"` : `✅ Feuille "${sheetObj.title}" liée`);
-      setTimeout(() => setAutoSyncToast(null), 3000);
+      // Read remote data
+      const data = await readAllSheetsData(token, cleanId);
+      if (data.entrees.length > 0 || data.sorties.length > 0) {
+        isFetchingFromRemote.current = true;
+        setEntrees(data.entrees);
+        setSorties(data.sorties);
+        lastSavedHash.current = `${data.entrees.length}_${data.sorties.length}_${JSON.stringify(data.entrees[0] || {})}_${JSON.stringify(data.sorties[0] || {})}`;
+        setLastSyncTime(new Date());
+        setAutoSyncToast(
+          lang === 'ar'
+            ? `✅ تم ربط ملف قوقل شيت المشترك "${sheetObj.title}" واسترجاع ${data.entrees.length + data.sorties.length} عملية بنجاح!`
+            : `✅ Feuille partagée "${sheetObj.title}" liée avec succès !`
+        );
+      } else {
+        await writeAllDataToGoogleSheet(token, cleanId, entrees, sorties);
+        lastSavedHash.current = `${entrees.length}_${sorties.length}_${JSON.stringify(entrees[0] || {})}_${JSON.stringify(sorties[0] || {})}`;
+        setLastSyncTime(new Date());
+        setAutoSyncToast(
+          lang === 'ar'
+            ? `✅ تم ربط ملف قوقل شيت المشترك "${sheetObj.title}" وحفظ البيانات فيه!`
+            : `✅ Feuille partagée liée avec succès !`
+        );
+      }
+      setTimeout(() => setAutoSyncToast(null), 3500);
     } catch (err: any) {
       if (err?.message === 'GOOGLE_SHEET_NO_ACCESS') {
         setAutoSyncToast(
@@ -432,162 +545,296 @@ export default function App() {
     }
   };
 
-  // Pull latest data from the sheet (never pushes anything)
+  // Pull latest data directly from Google Sheets (Refresh Database)
   const handleFetchFromGoogleSheets = async () => {
-    setIsSyncingCloud(true);
-    const ok = await loadFromSheet();
-    setIsSyncingCloud(false);
-    setAutoSyncToast(
-      ok
-        ? lang === 'ar' ? '✓ تم تحديث البيانات من الجدول' : '✓ Données actualisées depuis le tableau'
-        : lang === 'ar' ? '⚠️ تعذر قراءة الجدول — لم يتغير شيء' : '⚠️ Lecture impossible — rien n\'a été modifié'
-    );
-    setTimeout(() => setAutoSyncToast(null), 3000);
-  };
-
-  const handleManualSyncNow = handleFetchFromGoogleSheets;
-
-  // Run ONE row operation on the sheet; show the sheet's real answer.
-  const runOp = async (op: InventoryOp): Promise<boolean> => {
-    if (!dataReadyRef.current) {
-      setAutoSyncToast(lang === 'ar' ? '⛔ لم يتم تحميل الجدول بعد — لا يمكن الحفظ' : '⛔ Tableau non chargé — enregistrement bloqué');
-      setTimeout(() => setAutoSyncToast(null), 3500);
-      return false;
-    }
-    setIsSyncingCloud(true);
-    try {
-      const snap = await sendInventoryOp(op);
-      setEntrees(snap.entrees);
-      setSorties(snap.sorties);
-      setLastSyncTime(new Date());
-      const t = snap.target;
-      setAutoSyncToast(
-        t
-          ? lang === 'ar'
-            ? `💾 تم الحفظ في الملف «${t.file}» — ورقة «${op.sheet === 'entree' ? t.entreeTab : t.sortieTab}» (${op.sheet === 'entree' ? t.entreeRows : t.sortieRows} سطر)`
-            : `💾 Enregistré dans « ${t.file} » — onglet « ${op.sheet === 'entree' ? t.entreeTab : t.sortieTab} » (${op.sheet === 'entree' ? t.entreeRows : t.sortieRows} lignes)`
-          : lang === 'ar' ? '💾 تم الحفظ في الجدول ✓' : '💾 Enregistré dans le tableau ✓'
-      );
-      setTimeout(() => setAutoSyncToast(null), 6000);
-      return true;
-    } catch (err: any) {
-      setAutoSyncToast(
-        lang === 'ar'
-          ? `❌ لم يُحفظ في الجدول (${err?.message || 'خطأ'}) — أعد المحاولة`
-          : `❌ Non enregistré (${err?.message || 'erreur'}) — réessayez`
-      );
-      setTimeout(() => setAutoSyncToast(null), 4500);
-      await loadFromSheet(); // show the truth
-      return false;
-    } finally {
-      setIsSyncingCloud(false);
-    }
-  };
-
-  // The UI hands us full lists; we turn the difference into row-level operations only.
-  const handleUpdateEntreesAndSorties = async (newE: EntreeItem[], newS: SortieItem[]) => {
-    const oldE = entreesRef.current;
-    const oldS = sortiesRef.current;
-    const ops: InventoryOp[] = [];
-
-    const diff = <T extends { id: string }>(oldL: T[], newL: T[], sheet: 'entree' | 'sortie') => {
-      const newIds = new Set(newL.map((x) => x.id));
-      const oldMap = new Map(oldL.map((x) => [x.id, x]));
-      oldL.forEach((o) => {
-        if (!newIds.has(o.id)) ops.push({ action: 'delete', sheet, id: o.id });
-      });
-      newL.forEach((n) => {
-        const o = oldMap.get(n.id);
-        if (!o) ops.push({ action: 'add', sheet, item: n } as unknown as InventoryOp);
-        else if (JSON.stringify(o) !== JSON.stringify(n)) ops.push({ action: 'update', sheet, item: n } as unknown as InventoryOp);
-      });
-    };
-    diff(oldE, newE, 'entree');
-    diff(oldS, newS, 'sortie');
-
-    // SAFETY: a single user action may never delete more than one row
-    if (ops.filter((o) => o.action === 'delete').length > 1) {
-      console.warn('PROTECTION ACTIVE: blocked bulk delete');
+    if (!activeSpreadsheet?.id) {
+      handleConnectDriveOnce();
       return;
     }
-    for (const op of ops) {
-      if (!(await runOp(op))) break;
+    const token = accessToken || (await getAccessToken());
+    if (!token) {
+      handleConnectDriveOnce();
+      return;
     }
-  };
 
-  const uploadLocalOnly = async () => {
-    if (!localOnly || !dataReadyRef.current) return;
     setIsSyncingCloud(true);
     try {
-      let last: Awaited<ReturnType<typeof sendInventoryOp>> | null = null;
-      for (const it of localOnly.e) last = await sendInventoryOp({ action: 'add', sheet: 'entree', item: it });
-      for (const it of localOnly.s) last = await sendInventoryOp({ action: 'add', sheet: 'sortie', item: it });
-      if (last) {
-        setEntrees(last.entrees);
-        setSorties(last.sorties);
+      const data = await readAllSheetsData(token, activeSpreadsheet.id);
+      if (data.entrees.length > 0 || data.sorties.length > 0) {
+        setEntrees(data.entrees);
+        setSorties(data.sorties);
+        setLastSyncTime(new Date());
+        setAutoSyncToast(
+          lang === 'ar'
+            ? `✓ تم تحديث واسترجاع البيانات من Google Sheets (${data.entrees.length + data.sorties.length} عملية)`
+            : '✓ Données actualisées depuis Google Sheets'
+        );
+      } else {
+        setAutoSyncToast(
+          lang === 'ar'
+            ? 'ℹ️ ملف Google Sheets فارغ حالياً، جاري حفظ البيانات المحلية فيه...'
+            : 'ℹ️ Fichier vide, sauvegarde des données locales...'
+        );
+        await writeAllDataToGoogleSheet(token, activeSpreadsheet.id, entrees, sorties);
+        setLastSyncTime(new Date());
       }
-      const n = localOnly.e.length + localOnly.s.length;
-      setLocalOnly(null);
-      setAutoSyncToast(lang === 'ar' ? `✅ تم رفع ${n} عملية من هذا المتصفح إلى الجدول` : `✅ ${n} lignes envoyées au tableau`);
-      setTimeout(() => setAutoSyncToast(null), 5000);
+      setTimeout(() => setAutoSyncToast(null), 3000);
     } catch (err: any) {
-      setAutoSyncToast(lang === 'ar' ? `❌ تعذر الرفع (${err?.message || 'خطأ'}) — لم يُحذف شيء` : `❌ Envoi impossible (${err?.message || 'erreur'})`);
-      setTimeout(() => setAutoSyncToast(null), 5000);
+      console.error('Fetch error:', err);
+      setAutoSyncToast(
+        lang === 'ar'
+          ? `⚠️ ${err.message || 'خطأ أثناء تحميل البيانات من Google Sheets'}`
+          : `⚠️ ${err.message || 'Erreur lors du chargement Google Sheets'}`
+      );
+      setTimeout(() => setAutoSyncToast(null), 4000);
     } finally {
       setIsSyncingCloud(false);
     }
   };
 
-  const handleAddEntree = async (newItem: EntreeItem) => {
-    return await runOp({ action: 'add', sheet: 'entree', item: newItem });
-  };
-  const handleEditEntree = (updatedItem: EntreeItem) => {
-    runOp({ action: 'update', sheet: 'entree', item: updatedItem });
-  };
-  const handleDeleteEntree = (id: string) => {
-    runOp({ action: 'delete', sheet: 'entree', id });
-  };
-  const handleAddSortie = async (newItem: SortieItem) => {
-    return await runOp({ action: 'add', sheet: 'sortie', item: newItem });
-  };
-  const handleEditSortie = (updatedItem: SortieItem) => {
-    runOp({ action: 'update', sheet: 'sortie', item: updatedItem });
-  };
-  const handleDeleteSortie = (id: string) => {
-    runOp({ action: 'delete', sheet: 'sortie', id });
+  // Instant write to Google Sheets when data is modified directly
+  const handleUpdateEntreesAndSorties = async (newE: EntreeItem[], newS: SortieItem[]) => {
+    setEntrees(newE);
+    setSorties(newS);
+
+    // CRITICAL: NEVER overwrite Google Sheets if both lists are empty!
+    if (newE.length === 0 && newS.length === 0) {
+      console.warn('PROTECTION ACTIVE: Blocked writing empty dataset to Google Sheets');
+      return;
+    }
+
+    const token = accessToken || (await getAccessToken());
+
+    // 1. Immediately persist to server inventory cache (passes token so server updates Google Sheets)
+    fetch('/api/inventory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        entrees: newE,
+        sorties: newS,
+        author: currentUser?.email || 'User',
+        token: token || undefined,
+      }),
+    }).catch(() => {});
+    if (token && activeSpreadsheet?.id) {
+      setIsSyncingCloud(true);
+      try {
+        await writeAllDataToGoogleSheet(token, activeSpreadsheet.id, newE, newS);
+        lastSavedHash.current = `${newE.length}_${newS.length}_${JSON.stringify(newE[0] || {})}_${JSON.stringify(newS[0] || {})}`;
+        setTokenNeedsRefresh(false);
+        setLastSyncTime(new Date());
+        setAutoSyncToast(
+          lang === 'ar'
+            ? '💾 تم الحفظ المباشر في قوقل شيت ✓'
+            : '💾 Enregistré dans Google Sheets ✓'
+        );
+        setTimeout(() => setAutoSyncToast(null), 2500);
+
+        // Keep backend server updated with the valid token
+        saveSharedSheetConfig(activeSpreadsheet, currentUser?.email || 'User', token);
+      } catch (err: any) {
+        if (err?.message === 'GOOGLE_AUTH_EXPIRED') {
+          setTokenNeedsRefresh(true);
+          setAutoSyncToast(
+            lang === 'ar'
+              ? '⚠️ انتهت جلسة Google - اضغط زر المزامنة لتجديدها'
+              : '⚠️ Session Google expirée - cliquez pour renouveler'
+          );
+        } else {
+          console.warn('Direct write to Google Sheets failed:', err);
+          setAutoSyncToast(err.message || 'خطأ أثناء الحفظ في قوقل شيت');
+        }
+      } finally {
+        setIsSyncingCloud(false);
+      }
+    } else {
+      // 3. If client has no token, invoke server-side sync with stored token
+      fetch('/api/sync-now', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+        .then((r) => r.json())
+        .then((res) => {
+          if (res?.success) {
+            setLastSyncTime(new Date());
+            setAutoSyncToast(
+              lang === 'ar'
+                ? '💾 تم الحفظ والمزامنة التلقائية مع قوقل شيت ✓'
+                : '💾 Enregistré et synchronisé avec Google Sheets ✓'
+            );
+            setTimeout(() => setAutoSyncToast(null), 2500);
+          } else {
+            setAutoSyncToast(
+              lang === 'ar'
+                ? '💾 تم حفظ البيانات في النظام المشترك (انقر "مزامنة Google Sheets" للتطبيق)'
+                : '💾 Données enregistrées (cliquez Synchroniser pour Google Sheets)'
+            );
+            setTimeout(() => setAutoSyncToast(null), 3000);
+          }
+        })
+        .catch(() => {});
+    }
   };
 
-  // Block the whole app until the sheet has really been read (prevents any stale/empty overwrite)
-  if (!dataReady) {
-    return (
-      <div dir={lang === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen bg-neutral-100 flex items-center justify-center p-4 text-center font-sans">
-        <div className="bg-white p-6 rounded-2xl shadow-xl max-w-sm w-full border border-neutral-200">
-          {loadError ? (
-            <>
-              <p className="text-sm font-bold text-red-700 mb-2">
-                {lang === 'ar' ? 'تعذر قراءة الجدول' : 'Lecture du tableau impossible'}
-              </p>
-              <p className="text-xs text-neutral-600 mb-4">
-                {lang === 'ar'
-                  ? 'لم يتم تغيير أو حذف أي شيء. تحقق من الاتصال ثم أعد المحاولة.'
-                  : 'Rien n\'a été modifié. Vérifiez la connexion puis réessayez.'}
-              </p>
-              <button
-                onClick={() => { setLoadError(null); loadFromSheet(); }}
-                className="w-full py-2.5 px-4 bg-purple-700 hover:bg-purple-800 text-white font-medium rounded-xl text-sm"
-              >
-                {lang === 'ar' ? 'إعادة المحاولة' : 'Réessayer'}
-              </button>
-            </>
-          ) : (
-            <p className="text-sm text-neutral-700">
-              {lang === 'ar' ? 'جاري تحميل البيانات من الجدول...' : 'Chargement depuis le tableau...'}
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  }
+  // Manual trigger if user wants instant sync right now
+  const handleManualSyncNow = async () => {
+    setIsSyncingCloud(true);
+    try {
+      let token = accessToken || (await getAccessToken());
+      if (!token) {
+        // Prompt Google Sign-in to get fresh token
+        const res = await googleSignIn();
+        if (!res) {
+          setIsSyncingCloud(false);
+          return;
+        }
+        token = res.accessToken;
+        setAccessToken(token);
+        setCurrentUser(res.user);
+        setTokenNeedsRefresh(false);
+      }
+
+      if (!activeSpreadsheet?.id) {
+        await handleConnectDriveOnce();
+        return;
+      }
+
+      // Write all current entrees and sorties directly to Google Sheets
+      await writeAllDataToGoogleSheet(token, activeSpreadsheet.id, entrees, sorties);
+      await saveSharedSheetConfig(activeSpreadsheet, currentUser?.email || 'Admin', token);
+
+      lastSavedHash.current = `${entrees.length}_${sorties.length}_${JSON.stringify(entrees[0] || {})}_${JSON.stringify(sorties[0] || {})}`;
+      setTokenNeedsRefresh(false);
+      setHasLegacyColumns(false);
+      setLastSyncTime(new Date());
+      setAutoSyncToast(
+        lang === 'ar'
+          ? `✅ تم حفظ ومزامنة ${entrees.length + sorties.length} عملية وتحديث جميع الأعمدة الـ 8 بنجاح في Google Sheets!`
+          : `✅ Synchronisé avec succès dans Google Sheets (${entrees.length + sorties.length} lignes et 8 colonnes) !`
+      );
+      setTimeout(() => setAutoSyncToast(null), 3000);
+    } catch (err: any) {
+      console.error('Manual sync failed:', err);
+      if (err?.message === 'GOOGLE_AUTH_EXPIRED') {
+        setTokenNeedsRefresh(true);
+        try {
+          const res = await googleSignIn();
+          if (res) {
+            setAccessToken(res.accessToken);
+            setCurrentUser(res.user);
+            await writeAllDataToGoogleSheet(res.accessToken, activeSpreadsheet!.id, entrees, sorties);
+            await saveSharedSheetConfig(activeSpreadsheet!, res.user.email || 'Admin', res.accessToken);
+            setTokenNeedsRefresh(false);
+            setHasLegacyColumns(false);
+            setLastSyncTime(new Date());
+            setAutoSyncToast(
+              lang === 'ar'
+                ? '✅ تم تجديد الجلسة وحفظ البيانات في Google Sheets بنجاح!'
+                : '✅ Session renouvelée et données synchronisées !'
+            );
+            return;
+          }
+        } catch {}
+      }
+      setAutoSyncToast(err.message || 'خطأ أثناء المزامنة مع Google Sheets');
+    } finally {
+      setIsSyncingCloud(false);
+    }
+  };
+
+  // Handlers for adding/editing/deleting rows
+  const handleAddEntree = async (newItem: EntreeItem) => {
+    setEntrees((prev) => [newItem, ...prev]);
+
+    const token = accessToken || (await getAccessToken());
+    if (token && activeSpreadsheet?.id) {
+      setIsSyncingCloud(true);
+      try {
+        await appendEntreeRow(token, activeSpreadsheet.id, newItem);
+        setLastSyncTime(new Date());
+        setAutoSyncToast(
+          lang === 'ar'
+            ? '💾 تم تسجيل الاستلام وحماية بيانات Google Sheets ✓'
+            : '💾 Entrée ajoutée dans Google Sheets ✓'
+        );
+        setTimeout(() => setAutoSyncToast(null), 2500);
+
+        // Refresh master data to synchronize all rows
+        const latest = await readAllSheetsData(token, activeSpreadsheet.id);
+        if (latest.entrees.length > 0 || latest.sorties.length > 0) {
+          setEntrees(latest.entrees);
+          setSorties(latest.sorties);
+          localStorage.setItem('stock_entrees_v2', JSON.stringify(latest.entrees));
+          localStorage.setItem('stock_sorties_v2', JSON.stringify(latest.sorties));
+        }
+      } catch (err: any) {
+        if (err?.message === 'GOOGLE_AUTH_EXPIRED') {
+          setTokenNeedsRefresh(true);
+        } else {
+          console.warn('Append Entree failed:', err);
+        }
+      } finally {
+        setIsSyncingCloud(false);
+      }
+    }
+  };
+
+  const handleEditEntree = (updatedItem: EntreeItem) => {
+    const nextEntrees = entrees.map((e) => (e.id === updatedItem.id ? updatedItem : e));
+    handleUpdateEntreesAndSorties(nextEntrees, sorties);
+  };
+
+  const handleDeleteEntree = (id: string) => {
+    const nextEntrees = entrees.filter((e) => e.id !== id);
+    handleUpdateEntreesAndSorties(nextEntrees, sorties);
+  };
+
+  const handleAddSortie = async (newItem: SortieItem) => {
+    setSorties((prev) => [newItem, ...prev]);
+
+    const token = accessToken || (await getAccessToken());
+    if (token && activeSpreadsheet?.id) {
+      setIsSyncingCloud(true);
+      try {
+        await appendSortieRow(token, activeSpreadsheet.id, newItem);
+        setLastSyncTime(new Date());
+        setAutoSyncToast(
+          lang === 'ar'
+            ? '💾 تم تسجيل البيع وحماية بيانات Google Sheets ✓'
+            : '💾 Sortie ajoutée dans Google Sheets ✓'
+        );
+        setTimeout(() => setAutoSyncToast(null), 2500);
+
+        // Refresh master data to synchronize all rows
+        const latest = await readAllSheetsData(token, activeSpreadsheet.id);
+        if (latest.entrees.length > 0 || latest.sorties.length > 0) {
+          setEntrees(latest.entrees);
+          setSorties(latest.sorties);
+          localStorage.setItem('stock_entrees_v2', JSON.stringify(latest.entrees));
+          localStorage.setItem('stock_sorties_v2', JSON.stringify(latest.sorties));
+        }
+      } catch (err: any) {
+        if (err?.message === 'GOOGLE_AUTH_EXPIRED') {
+          setTokenNeedsRefresh(true);
+        } else {
+          console.warn('Append Sortie failed:', err);
+        }
+      } finally {
+        setIsSyncingCloud(false);
+      }
+    }
+  };
+
+  const handleEditSortie = (updatedItem: SortieItem) => {
+    const nextSorties = sorties.map((s) => (s.id === updatedItem.id ? updatedItem : s));
+    handleUpdateEntreesAndSorties(entrees, nextSorties);
+  };
+
+  const handleDeleteSortie = (id: string) => {
+    const nextSorties = sorties.filter((s) => s.id !== id);
+    handleUpdateEntreesAndSorties(entrees, nextSorties);
+  };
 
   return (
     <div
@@ -681,29 +928,6 @@ export default function App() {
       </header>
 
       {/* Floating Auto-Sync Notification Toast */}
-      {localOnly && (
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 mt-3">
-          <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center gap-2 justify-between">
-            <span className="font-bold">
-              {lang === 'ar'
-                ? `⚠️ وُجدت ${localOnly.e.length + localOnly.s.length} عملية محفوظة في هذا المتصفح فقط وليست في الجدول. ارفعها حتى لا تضيع.`
-                : `⚠️ ${localOnly.e.length + localOnly.s.length} lignes n'existent que dans ce navigateur, pas dans le tableau.`}
-            </span>
-            <span className="flex gap-2 shrink-0">
-              <button onClick={uploadLocalOnly} className="px-3 py-1.5 rounded-lg bg-amber-700 hover:bg-amber-800 text-white font-bold">
-                {lang === 'ar' ? 'رفع إلى الجدول' : 'Envoyer au tableau'}
-              </button>
-              <button
-                onClick={() => { try { localStorage.setItem('stock_migration_ignored_v3', '1'); } catch {} setLocalOnly(null); }}
-                className="px-3 py-1.5 rounded-lg bg-white border border-amber-300 font-bold"
-              >
-                {lang === 'ar' ? 'تجاهل' : 'Ignorer'}
-              </button>
-            </span>
-          </div>
-        </div>
-      )}
-
       {autoSyncToast && (
         <div className="fixed top-20 start-1/2 -translate-x-1/2 rtl:translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white rounded-full shadow-lg text-xs font-bold border border-neutral-700">

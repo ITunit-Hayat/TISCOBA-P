@@ -266,10 +266,6 @@ export async function writeAllDataToGoogleSheet(
   entrees: EntreeItem[],
   sorties: SortieItem[]
 ): Promise<void> {
-  // DISABLED: the browser must never overwrite the sheet. Use row-level operations (inventoryApi.ts).
-  console.warn('PROTECTION ACTIVE: writeAllDataToGoogleSheet is disabled.');
-  return;
-  // eslint-disable-next-line no-unreachable
   const cleanId = extractSpreadsheetId(spreadsheetId);
 
   // CRITICAL SAFETY SHIELD: NEVER wipe or clear Google Sheets if both entrees and sorties are empty!

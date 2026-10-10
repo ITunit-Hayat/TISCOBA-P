@@ -226,9 +226,6 @@ async function syncViaWebhook(webhookUrl: string, entrees: any[], sorties: any[]
 
 // Helper to push values directly to Google Sheets via Sheets API v4
 async function syncDataToGoogleSheets(sheetId: string, token: string, entrees: any[], sorties: any[]) {
-  // DISABLED: full overwrite of the sheet is forbidden. The sheet is the only source of truth.
-  console.warn('PROTECTION ACTIVE: full-sheet overwrite is disabled');
-  return false;
   // CRITICAL SAFETY SHIELD: NEVER wipe Google Sheets if both entrees and sorties are empty
   if (!Array.isArray(entrees) || !Array.isArray(sorties) || (entrees.length === 0 && sorties.length === 0)) {
     console.warn('PROTECTION ACTIVE: Skipped syncing empty inventory to Google Sheets');
@@ -388,67 +385,103 @@ async function syncDataToGoogleSheets(sheetId: string, token: string, entrees: a
   }
 }
 
-// ---- Google Sheet = single source of truth (via Apps Script webhook) ----
-function getWebhookUrl(): string | undefined {
-  if (process.env.SHEET_WEBHOOK_URL) return process.env.SHEET_WEBHOOK_URL;
+// Endpoint to explicitly push latest inventory cache to Google Sheets
+app.post('/api/sync-now', async (req, res) => {
   try {
+    const { token } = req.body;
+    if (!fs.existsSync(SHARED_FILE_PATH)) {
+      return res.status(400).json({ error: 'No shared sheet configured yet' });
+    }
+    const sheetCfg = JSON.parse(fs.readFileSync(SHARED_FILE_PATH, 'utf-8'));
+    const effectiveToken = token || sheetCfg.token;
+
+    let inventory = { entrees: [], sorties: [] };
+    if (fs.existsSync(INVENTORY_FILE_PATH)) {
+      inventory = JSON.parse(fs.readFileSync(INVENTORY_FILE_PATH, 'utf-8'));
+    }
+
+    let webhookSuccess = false;
+    if (sheetCfg?.webhookUrl) {
+      webhookSuccess = await syncViaWebhook(sheetCfg.webhookUrl, inventory.entrees || [], inventory.sorties || []);
+    }
+
+    let apiSuccess = false;
+    if (sheetCfg?.id && effectiveToken) {
+      if (token) {
+        sheetCfg.token = token;
+        fs.writeFileSync(SHARED_FILE_PATH, JSON.stringify(sheetCfg, null, 2), 'utf-8');
+      }
+      apiSuccess = await syncDataToGoogleSheets(sheetCfg.id, effectiveToken, inventory.entrees || [], inventory.sorties || []);
+    }
+
+    if (webhookSuccess || apiSuccess) {
+      return res.json({ 
+        success: true, 
+        webhook: webhookSuccess, 
+        api: apiSuccess,
+        count: (inventory.entrees?.length || 0) + (inventory.sorties?.length || 0) 
+      });
+    }
+
+    if (!effectiveToken && !sheetCfg?.webhookUrl) {
+      return res.status(401).json({ error: 'TOKEN_REQUIRED' });
+    }
+
+    return res.status(500).json({ error: 'Failed to write to Google Sheets' });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Sync error' });
+  }
+});
+
+// Shared inventory data sync across team members
+app.get('/api/inventory', (_req, res) => {
+  try {
+    if (fs.existsSync(INVENTORY_FILE_PATH)) {
+      const data = JSON.parse(fs.readFileSync(INVENTORY_FILE_PATH, 'utf-8'));
+      return res.json({ success: true, data });
+    }
+  } catch (e) {
+    console.warn('Error reading inventory cache:', e);
+  }
+  res.json({ success: true, data: null });
+});
+
+app.post('/api/inventory', async (req, res) => {
+  try {
+    const { entrees, sorties, author, token } = req.body;
+    const data = {
+      entrees: Array.isArray(entrees) ? entrees : [],
+      sorties: Array.isArray(sorties) ? sorties : [],
+      author: author || 'Team',
+      updatedAt: new Date().toISOString(),
+    };
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(INVENTORY_FILE_PATH, JSON.stringify(data, null, 2), 'utf-8');
+
+    // Optional webhook notification (non-destructive)
     if (fs.existsSync(SHARED_FILE_PATH)) {
-      return JSON.parse(fs.readFileSync(SHARED_FILE_PATH, 'utf-8')).webhookUrl || undefined;
+      try {
+        const sheetCfg = JSON.parse(fs.readFileSync(SHARED_FILE_PATH, 'utf-8'));
+        if (token && token !== sheetCfg.token) {
+          sheetCfg.token = token;
+          sheetCfg.updatedAt = new Date().toISOString();
+          fs.writeFileSync(SHARED_FILE_PATH, JSON.stringify(sheetCfg, null, 2), 'utf-8');
+        }
+        if (sheetCfg?.webhookUrl && (data.entrees.length > 0 || data.sorties.length > 0)) {
+          syncViaWebhook(sheetCfg.webhookUrl, data.entrees, data.sorties);
+        }
+      } catch (syncErr) {
+        console.warn('Sync warning on inventory post:', syncErr);
+      }
     }
-  } catch {}
-  return undefined;
-}
 
-// Legacy endpoint: pushing the whole inventory is no longer allowed (it caused data loss)
-app.post('/api/sync-now', (_req, res) => {
-  res.json({ success: true, readOnly: true, message: 'Full overwrite disabled; use row-level operations.' });
-});
-
-// Read: ALWAYS straight from the Google Sheet. Never from local/browser/server cache.
-app.get('/api/inventory', async (_req, res) => {
-  const url = getWebhookUrl();
-  if (!url) return res.status(503).json({ success: false, error: 'WEBHOOK_NOT_CONFIGURED' });
-  try {
-    const r = await fetch(`${url}${url.includes('?') ? '&' : '?'}action=read`, { redirect: 'follow' });
-    const json: any = await r.json();
-    if (json?.status !== 'ok' || !Array.isArray(json.entrees) || !Array.isArray(json.sorties)) {
-      return res.status(502).json({ success: false, error: json?.error || 'BAD_SHEET_RESPONSE' });
-    }
-    res.set('Cache-Control', 'no-store');
-    res.json({ success: true, data: { entrees: json.entrees, sorties: json.sorties, readAt: json.readAt } });
+    res.json({ success: true, data });
   } catch (e: any) {
-    res.status(502).json({ success: false, error: e?.message || 'SHEET_UNREACHABLE' });
+    console.error('Error saving inventory cache:', e);
+    res.status(500).json({ error: e?.message || 'Failed to save inventory cache' });
   }
-});
-
-// Write: ONE row operation (add / update / delete). The sheet answers with its real state.
-app.post('/api/inventory/op', async (req, res) => {
-  const url = getWebhookUrl();
-  if (!url) return res.status(503).json({ success: false, error: 'WEBHOOK_NOT_CONFIGURED' });
-  const { action, sheet, item, id } = req.body || {};
-  if (!['add', 'update', 'delete'].includes(action) || !['entree', 'sortie'].includes(sheet)) {
-    return res.status(400).json({ success: false, error: 'BAD_OPERATION' });
-  }
-  try {
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action, sheet, item, id }),
-      redirect: 'follow',
-    });
-    const json: any = await r.json();
-    if (json?.status !== 'success') {
-      return res.status(502).json({ success: false, error: json?.error || json?.message || 'SHEET_REJECTED' });
-    }
-    res.json({ success: true, data: { entrees: json.entrees, sorties: json.sorties } });
-  } catch (e: any) {
-    res.status(502).json({ success: false, error: e?.message || 'SHEET_UNREACHABLE' });
-  }
-});
-
-// Legacy full-state POST: ignored on purpose
-app.post('/api/inventory', (_req, res) => {
-  res.json({ success: true, ignored: true });
 });
 
 // Setup Vite dev server or static files

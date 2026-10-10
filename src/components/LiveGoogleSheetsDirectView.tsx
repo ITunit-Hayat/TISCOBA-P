@@ -37,8 +37,8 @@ interface LiveGoogleSheetsDirectViewProps {
     qty124Bleu: number;
   };
   onUpdateEntreesAndSorties: (newEntrees: EntreeItem[], newSorties: SortieItem[]) => void;
-  onAddEntree?: (item: EntreeItem) => Promise<boolean | void> | boolean | void;
-  onAddSortie?: (item: SortieItem) => Promise<boolean | void> | boolean | void;
+  onAddEntree?: (item: EntreeItem) => Promise<void> | void;
+  onAddSortie?: (item: SortieItem) => Promise<void> | void;
   onOpenDriveModal?: () => void;
   activeSpreadsheet: { id: string; url: string; title: string; webhookUrl?: string } | null;
   autoSync?: boolean;
@@ -164,7 +164,7 @@ export const LiveGoogleSheetsDirectView: React.FC<LiveGoogleSheetsDirectViewProp
   };
 
   // Handle Form Submit
-  const handleSaveForm = async (e: React.FormEvent) => {
+  const handleSaveForm = (e: React.FormEvent) => {
     e.preventDefault();
 
     const q152V = Number(qty152Vert) || 0;
@@ -207,16 +207,11 @@ export const LiveGoogleSheetsDirectView: React.FC<LiveGoogleSheetsDirectViewProp
         notes: notes.trim() || undefined,
       };
       if (onAddEntree) {
-        const ok = await onAddEntree(newItem);
-        if (ok === false) {
-          setFormSuccessMessage(isAr ? '❌ لم يتم الحفظ في الجدول — البيانات باقية في النموذج، أعد المحاولة' : '❌ Non enregistré dans le tableau — réessayez');
-          setTimeout(() => setFormSuccessMessage(null), 6000);
-          return;
-        }
+        onAddEntree(newItem);
       } else {
         onUpdateEntreesAndSorties([newItem, ...entrees], sorties);
       }
-      setFormSuccessMessage(isAr ? '✅ تم الحفظ في الجدول، وتم تصفير الحقول لتسجيل عملية جديدة!' : '✅ Entrée enregistrée et champs réinitialisés !');
+      setFormSuccessMessage(isAr ? '✅ تم حفظ و الاستلام بنجاح، وتم تصفير كافة الحقول لتسجيل عملية جديدة!' : '✅ Entrée enregistrée et champs réinitialisés !');
     } else {
       const newItem: SortieItem = {
         id: `sortie-${Date.now()}`,
@@ -235,12 +230,7 @@ export const LiveGoogleSheetsDirectView: React.FC<LiveGoogleSheetsDirectViewProp
         notes: notes.trim() || undefined,
       };
       if (onAddSortie) {
-        const ok = await onAddSortie(newItem);
-        if (ok === false) {
-          setFormSuccessMessage(isAr ? '❌ لم يتم الحفظ في الجدول — البيانات باقية في النموذج، أعد المحاولة' : '❌ Non enregistré dans le tableau — réessayez');
-          setTimeout(() => setFormSuccessMessage(null), 6000);
-          return;
-        }
+        onAddSortie(newItem);
       } else {
         onUpdateEntreesAndSorties(entrees, [newItem, ...sorties]);
       }
