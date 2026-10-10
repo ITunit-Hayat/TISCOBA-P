@@ -169,6 +169,8 @@ export default function App() {
   const [dataReady, setDataReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const dataReadyRef = useRef(false);
+  const [localOnly, setLocalOnly] = useState<{ e: EntreeItem[]; s: SortieItem[] } | null>(null);
+  const migrationChecked = useRef(false);
   const entreesRef = useRef<EntreeItem[]>([]);
   const sortiesRef = useRef<SortieItem[]>([]);
   entreesRef.current = entrees;
@@ -181,6 +183,21 @@ export default function App() {
       setSorties(data.sorties);
       dataReadyRef.current = true;
       setDataReady(true);
+      // One-time check: rows that exist only in this browser (old versions kept them in localStorage)
+      if (!migrationChecked.current) {
+        migrationChecked.current = true;
+        try {
+          if (localStorage.getItem('stock_migration_ignored_v3') !== '1') {
+            const le = JSON.parse(localStorage.getItem('stock_entrees_v2') || '[]');
+            const ls = JSON.parse(localStorage.getItem('stock_sorties_v2') || '[]');
+            const eIds = new Set(data.entrees.map((x) => x.id));
+            const sIds = new Set(data.sorties.map((x) => x.id));
+            const e = Array.isArray(le) ? le.filter((x: any) => x && x.id && !eIds.has(x.id)) : [];
+            const sl = Array.isArray(ls) ? ls.filter((x: any) => x && x.id && !sIds.has(x.id)) : [];
+            if (e.length || sl.length) setLocalOnly({ e, s: sl });
+          }
+        } catch {}
+      }
       setLoadError(null);
       setLastSyncTime(new Date());
       return true;
@@ -443,8 +460,15 @@ export default function App() {
       setEntrees(snap.entrees);
       setSorties(snap.sorties);
       setLastSyncTime(new Date());
-      setAutoSyncToast(lang === 'ar' ? '💾 تم الحفظ في الجدول ✓' : '💾 Enregistré dans le tableau ✓');
-      setTimeout(() => setAutoSyncToast(null), 2000);
+      const t = snap.target;
+      setAutoSyncToast(
+        t
+          ? lang === 'ar'
+            ? `💾 تم الحفظ في الملف «${t.file}» — ورقة «${op.sheet === 'entree' ? t.entreeTab : t.sortieTab}» (${op.sheet === 'entree' ? t.entreeRows : t.sortieRows} سطر)`
+            : `💾 Enregistré dans « ${t.file} » — onglet « ${op.sheet === 'entree' ? t.entreeTab : t.sortieTab} » (${op.sheet === 'entree' ? t.entreeRows : t.sortieRows} lignes)`
+          : lang === 'ar' ? '💾 تم الحفظ في الجدول ✓' : '💾 Enregistré dans le tableau ✓'
+      );
+      setTimeout(() => setAutoSyncToast(null), 6000);
       return true;
     } catch (err: any) {
       setAutoSyncToast(
@@ -488,6 +512,29 @@ export default function App() {
     }
     for (const op of ops) {
       if (!(await runOp(op))) break;
+    }
+  };
+
+  const uploadLocalOnly = async () => {
+    if (!localOnly || !dataReadyRef.current) return;
+    setIsSyncingCloud(true);
+    try {
+      let last: Awaited<ReturnType<typeof sendInventoryOp>> | null = null;
+      for (const it of localOnly.e) last = await sendInventoryOp({ action: 'add', sheet: 'entree', item: it });
+      for (const it of localOnly.s) last = await sendInventoryOp({ action: 'add', sheet: 'sortie', item: it });
+      if (last) {
+        setEntrees(last.entrees);
+        setSorties(last.sorties);
+      }
+      const n = localOnly.e.length + localOnly.s.length;
+      setLocalOnly(null);
+      setAutoSyncToast(lang === 'ar' ? `✅ تم رفع ${n} عملية من هذا المتصفح إلى الجدول` : `✅ ${n} lignes envoyées au tableau`);
+      setTimeout(() => setAutoSyncToast(null), 5000);
+    } catch (err: any) {
+      setAutoSyncToast(lang === 'ar' ? `❌ تعذر الرفع (${err?.message || 'خطأ'}) — لم يُحذف شيء` : `❌ Envoi impossible (${err?.message || 'erreur'})`);
+      setTimeout(() => setAutoSyncToast(null), 5000);
+    } finally {
+      setIsSyncingCloud(false);
     }
   };
 
@@ -634,6 +681,29 @@ export default function App() {
       </header>
 
       {/* Floating Auto-Sync Notification Toast */}
+      {localOnly && (
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 mt-3">
+          <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center gap-2 justify-between">
+            <span className="font-bold">
+              {lang === 'ar'
+                ? `⚠️ وُجدت ${localOnly.e.length + localOnly.s.length} عملية محفوظة في هذا المتصفح فقط وليست في الجدول. ارفعها حتى لا تضيع.`
+                : `⚠️ ${localOnly.e.length + localOnly.s.length} lignes n'existent que dans ce navigateur, pas dans le tableau.`}
+            </span>
+            <span className="flex gap-2 shrink-0">
+              <button onClick={uploadLocalOnly} className="px-3 py-1.5 rounded-lg bg-amber-700 hover:bg-amber-800 text-white font-bold">
+                {lang === 'ar' ? 'رفع إلى الجدول' : 'Envoyer au tableau'}
+              </button>
+              <button
+                onClick={() => { try { localStorage.setItem('stock_migration_ignored_v3', '1'); } catch {} setLocalOnly(null); }}
+                className="px-3 py-1.5 rounded-lg bg-white border border-amber-300 font-bold"
+              >
+                {lang === 'ar' ? 'تجاهل' : 'Ignorer'}
+              </button>
+            </span>
+          </div>
+        </div>
+      )}
+
       {autoSyncToast && (
         <div className="fixed top-20 start-1/2 -translate-x-1/2 rtl:translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white rounded-full shadow-lg text-xs font-bold border border-neutral-700">

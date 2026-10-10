@@ -3,6 +3,7 @@ import { EntreeItem, SortieItem } from '../types/stock';
 export interface InventorySnapshot {
   entrees: EntreeItem[];
   sorties: SortieItem[];
+  target?: { file: string; url: string; entreeTab: string; entreeRows: number; sortieTab: string; sortieRows: number };
 }
 
 export type InventoryOp =
@@ -37,7 +38,7 @@ export async function fetchInventory(): Promise<InventorySnapshot> {
         (json?.message ? 'السكربت القديم ما زال منشوراً — انشر إصداراً جديداً من Code.gs' : 'SHEET_READ_FAILED')
     );
   }
-  return { entrees: json.entrees, sorties: json.sorties };
+  return { entrees: json.entrees, sorties: json.sorties, target: json.target };
 }
 
 /** الكتابة: عملية واحدة على سطر واحد، والرد هو الحالة الحقيقية من الجدول */
@@ -53,5 +54,5 @@ export async function sendInventoryOp(op: InventoryOp): Promise<InventorySnapsho
   if (json?.status !== 'success' || !Array.isArray(json.entrees) || !Array.isArray(json.sorties)) {
     throw new Error(json?.error || json?.message || 'SHEET_WRITE_FAILED');
   }
-  return { entrees: json.entrees, sorties: json.sorties };
+  return { entrees: json.entrees, sorties: json.sorties, target: json.target };
 }
