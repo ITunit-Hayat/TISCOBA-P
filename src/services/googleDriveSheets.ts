@@ -31,6 +31,80 @@ export interface SharedSheetConfig {
   updatedAt?: string;
 }
 
+type AppsScriptRequest = {
+  action: 'sync' | 'add' | 'update' | 'delete' | 'seed';
+  sheetId: string;
+  sheet?: 'entree' | 'sortie';
+  item?: EntreeItem | SortieItem;
+  id?: string;
+  entrees?: EntreeItem[];
+  sorties?: SortieItem[];
+};
+
+export async function sendAppsScriptRequest(
+  accessToken: string,
+  request: AppsScriptRequest
+): Promise<{ entrees: EntreeItem[]; sorties: SortieItem[] }> {
+  const response = await fetch('/api/apps-script', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (response.status === 401) throw new Error('GOOGLE_AUTH_EXPIRED');
+  if (!response.ok) {
+    throw new Error(result.error || 'Apps Script synchronization failed.');
+  }
+  if (result.status !== 'success') {
+    throw new Error(result.error || result.message || 'Apps Script did not confirm the operation.');
+  }
+  return { entrees: result.entrees || [], sorties: result.sorties || [] };
+}
+
+export async function syncInventoryViaAppsScript(
+  accessToken: string,
+  spreadsheetId: string,
+  entrees: EntreeItem[],
+  sorties: SortieItem[]
+): Promise<{ entrees: EntreeItem[]; sorties: SortieItem[] }> {
+  return sendAppsScriptRequest(accessToken, {
+    action: 'sync',
+    sheetId: extractSpreadsheetId(spreadsheetId),
+    entrees,
+    sorties,
+  });
+}
+
+export async function readInventoryViaAppsScript(
+  accessToken: string,
+  spreadsheetId: string
+): Promise<{ entrees: EntreeItem[]; sorties: SortieItem[]; isLegacy4Columns: false }> {
+  const response = await fetch('/api/apps-script', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'read',
+      sheetId: extractSpreadsheetId(spreadsheetId),
+    }),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (response.status === 401) throw new Error('GOOGLE_AUTH_EXPIRED');
+  if (!response.ok || result.status !== 'ok') {
+    throw new Error(result.error || 'Apps Script could not read Google Sheets.');
+  }
+  return {
+    entrees: result.entrees || [],
+    sorties: result.sorties || [],
+    isLegacy4Columns: false,
+  };
+}
+
 /**
  * Extracts a Google Spreadsheet ID from a URL or raw ID string.
  */

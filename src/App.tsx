@@ -13,14 +13,9 @@ import { LiveGoogleSheetsDirectView } from './components/LiveGoogleSheetsDirectV
 import { GoogleDriveSyncModal } from './components/GoogleDriveSyncModal';
 import { initAuth, getAccessToken, googleSignIn, isAccessDeniedError } from './services/googleAuth';
 import { 
-  writeAllDataToGoogleSheet, 
-  readAllSheetsData,
-  appendEntreeRow,
-  appendSortieRow,
-  updateEntreeRow,
-  deleteEntreeRow,
-  updateSortieRow,
-  deleteSortieRow,
+  sendAppsScriptRequest,
+  syncInventoryViaAppsScript,
+  readInventoryViaAppsScript,
   createInventorySpreadsheet, 
   listDriveSpreadsheets,
   getSpreadsheetMetadata,
@@ -290,7 +285,7 @@ export default function App() {
 
       setIsSyncingCloud(true);
       try {
-        const { entrees: sheetE, sorties: sheetS, isLegacy4Columns } = await readAllSheetsData(token, activeSpreadsheet.id);
+        const { entrees: sheetE, sorties: sheetS, isLegacy4Columns } = await readInventoryViaAppsScript(token, activeSpreadsheet.id);
         if (!isSubscribed) return;
 
         setHasLegacyColumns(Boolean(isLegacy4Columns));
@@ -325,6 +320,10 @@ export default function App() {
           localStorage.removeItem('gdrive_access_token');
         } else {
           console.warn('Initial load from Google Sheets:', err);
+          if (isSubscribed) {
+            setAutoSyncToast(err?.message || 'تعذر الاتصال بجدول Google Sheets عبر Apps Script');
+            setTimeout(() => setAutoSyncToast(null), 5000);
+          }
         }
       } finally {
         if (isSubscribed) setIsSyncingCloud(false);
@@ -425,7 +424,7 @@ export default function App() {
       if (effectiveSheet) {
         setIsSyncingCloud(true);
         try {
-          const data = await readAllSheetsData(result.accessToken, effectiveSheet.id);
+          const data = await readInventoryViaAppsScript(result.accessToken, effectiveSheet.id);
           if (data.entrees.length > 0 || data.sorties.length > 0) {
             isFetchingFromRemote.current = true;
             setEntrees(data.entrees);
@@ -438,7 +437,7 @@ export default function App() {
                 : '✅ Connecté à Google Sheets avec succès !'
             );
           } else {
-            await writeAllDataToGoogleSheet(result.accessToken, effectiveSheet.id, entrees, sorties);
+            await syncInventoryViaAppsScript(result.accessToken, effectiveSheet.id, entrees, sorties);
             lastSavedHash.current = `${entrees.length}_${sorties.length}_${JSON.stringify(entrees[0] || {})}_${JSON.stringify(sorties[0] || {})}`;
             setLastSyncTime(new Date());
             setAutoSyncToast(
@@ -517,7 +516,7 @@ export default function App() {
       setSharedTeamSheet(sheetObj);
 
       // Read remote data
-      const data = await readAllSheetsData(token, cleanId);
+      const data = await readInventoryViaAppsScript(token, cleanId);
       if (data.entrees.length > 0 || data.sorties.length > 0) {
         isFetchingFromRemote.current = true;
         setEntrees(data.entrees);
@@ -530,7 +529,7 @@ export default function App() {
             : `✅ Feuille partagée "${sheetObj.title}" liée avec succès !`
         );
       } else {
-        await writeAllDataToGoogleSheet(token, cleanId, entrees, sorties);
+        await syncInventoryViaAppsScript(token, cleanId, entrees, sorties);
         lastSavedHash.current = `${entrees.length}_${sorties.length}_${JSON.stringify(entrees[0] || {})}_${JSON.stringify(sorties[0] || {})}`;
         setLastSyncTime(new Date());
         setAutoSyncToast(
@@ -571,7 +570,7 @@ export default function App() {
 
     setIsSyncingCloud(true);
     try {
-      const data = await readAllSheetsData(token, activeSpreadsheet.id);
+      const data = await readInventoryViaAppsScript(token, activeSpreadsheet.id);
       if (data.entrees.length > 0 || data.sorties.length > 0) {
         setEntrees(data.entrees);
         setSorties(data.sorties);
@@ -587,7 +586,7 @@ export default function App() {
             ? 'ℹ️ ملف Google Sheets فارغ حالياً، جاري حفظ البيانات المحلية فيه...'
             : 'ℹ️ Fichier vide, sauvegarde des données locales...'
         );
-        await writeAllDataToGoogleSheet(token, activeSpreadsheet.id, entrees, sorties);
+        await syncInventoryViaAppsScript(token, activeSpreadsheet.id, entrees, sorties);
         setLastSyncTime(new Date());
       }
       setTimeout(() => setAutoSyncToast(null), 3000);
@@ -634,21 +633,12 @@ export default function App() {
 
     setIsSyncingCloud(true);
     try {
-      if (mutation.sheet === 'entree') {
-        if (mutation.action === 'add') {
-          await appendEntreeRow(token, activeSpreadsheet.id, mutation.item);
-        } else if (mutation.action === 'update') {
-          await updateEntreeRow(token, activeSpreadsheet.id, mutation.item);
-        } else {
-          await deleteEntreeRow(token, activeSpreadsheet.id, mutation.id);
-        }
-      } else if (mutation.action === 'add') {
-        await appendSortieRow(token, activeSpreadsheet.id, mutation.item);
-      } else if (mutation.action === 'update') {
-        await updateSortieRow(token, activeSpreadsheet.id, mutation.item);
-      } else {
-        await deleteSortieRow(token, activeSpreadsheet.id, mutation.id);
-      }
+      await sendAppsScriptRequest(token, {
+        action: mutation.action,
+        sheet: mutation.sheet,
+        sheetId: activeSpreadsheet.id,
+        ...('item' in mutation ? { item: mutation.item } : { id: mutation.id }),
+      });
 
       lastSavedHash.current = `${newE.length}_${newS.length}_${JSON.stringify(newE[0] || {})}_${JSON.stringify(newS[0] || {})}`;
       setTokenNeedsRefresh(false);
@@ -704,7 +694,7 @@ export default function App() {
       }
 
       // Write all current entrees and sorties directly to Google Sheets
-      await writeAllDataToGoogleSheet(token, activeSpreadsheet.id, entrees, sorties);
+      await syncInventoryViaAppsScript(token, activeSpreadsheet.id, entrees, sorties);
       await saveSharedSheetConfig(activeSpreadsheet, currentUser?.email || 'Admin', token);
 
       lastSavedHash.current = `${entrees.length}_${sorties.length}_${JSON.stringify(entrees[0] || {})}_${JSON.stringify(sorties[0] || {})}`;
@@ -726,7 +716,7 @@ export default function App() {
           if (res) {
             setAccessToken(res.accessToken);
             setCurrentUser(res.user);
-            await writeAllDataToGoogleSheet(res.accessToken, activeSpreadsheet!.id, entrees, sorties);
+            await syncInventoryViaAppsScript(res.accessToken, activeSpreadsheet!.id, entrees, sorties);
             await saveSharedSheetConfig(activeSpreadsheet!, res.user.email || 'Admin', res.accessToken);
             setTokenNeedsRefresh(false);
             setHasLegacyColumns(false);
@@ -755,7 +745,9 @@ export default function App() {
       setIsSyncingCloud(true);
       let savedToSheet = false;
       try {
-        await appendEntreeRow(token, activeSpreadsheet.id, newItem);
+        await sendAppsScriptRequest(token, {
+          action: 'add', sheet: 'entree', sheetId: activeSpreadsheet.id, item: newItem,
+        });
         savedToSheet = true;
         setLastSyncTime(new Date());
         setAutoSyncToast(
@@ -766,7 +758,7 @@ export default function App() {
         setTimeout(() => setAutoSyncToast(null), 2500);
 
         // Refresh master data to synchronize all rows
-        const latest = await readAllSheetsData(token, activeSpreadsheet.id);
+        const latest = await readInventoryViaAppsScript(token, activeSpreadsheet.id);
         if (latest.entrees.length > 0 || latest.sorties.length > 0) {
           setEntrees(latest.entrees);
           setSorties(latest.sorties);
@@ -811,7 +803,9 @@ export default function App() {
       setIsSyncingCloud(true);
       let savedToSheet = false;
       try {
-        await appendSortieRow(token, activeSpreadsheet.id, newItem);
+        await sendAppsScriptRequest(token, {
+          action: 'add', sheet: 'sortie', sheetId: activeSpreadsheet.id, item: newItem,
+        });
         savedToSheet = true;
         setLastSyncTime(new Date());
         setAutoSyncToast(
@@ -822,7 +816,7 @@ export default function App() {
         setTimeout(() => setAutoSyncToast(null), 2500);
 
         // Refresh master data to synchronize all rows
-        const latest = await readAllSheetsData(token, activeSpreadsheet.id);
+        const latest = await readInventoryViaAppsScript(token, activeSpreadsheet.id);
         if (latest.entrees.length > 0 || latest.sorties.length > 0) {
           setEntrees(latest.entrees);
           setSorties(latest.sorties);
