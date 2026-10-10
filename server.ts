@@ -1,6 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 
@@ -145,6 +146,309 @@ app.post('/api/analyze-receipt', async (req, res) => {
     console.error('Analyze image error:', error);
     res.status(500).json({ error: error?.message || 'Failed to analyze image' });
   }
+});
+
+// Persistent shared spreadsheet endpoint
+const DATA_DIR = path.join(__dirname, '.data');
+const SHARED_FILE_PATH = path.join(DATA_DIR, 'shared_sheet.json');
+const INVENTORY_FILE_PATH = path.join(DATA_DIR, 'inventory_cache.json');
+
+app.get('/api/shared-sheet', (_req, res) => {
+  try {
+    if (fs.existsSync(SHARED_FILE_PATH)) {
+      const data = JSON.parse(fs.readFileSync(SHARED_FILE_PATH, 'utf-8'));
+      return res.json({ sheet: data });
+    }
+  } catch (e) {
+    console.warn('Error reading shared sheet config:', e);
+  }
+  res.json({ sheet: null });
+});
+
+app.post('/api/shared-sheet', (req, res) => {
+  try {
+    const { id, title, url, sharedBy, token, webhookUrl } = req.body;
+    if (!id && !webhookUrl) {
+      return res.status(400).json({ error: 'Spreadsheet ID or Webhook URL is required' });
+    }
+
+    let existingToken: string | undefined;
+    let existingWebhook: string | undefined;
+    if (fs.existsSync(SHARED_FILE_PATH)) {
+      try {
+        const oldData = JSON.parse(fs.readFileSync(SHARED_FILE_PATH, 'utf-8'));
+        existingToken = oldData.token;
+        existingWebhook = oldData.webhookUrl;
+      } catch {}
+    }
+
+    const data = {
+      id: id || '1YmMLdU0c547GqTnxmdxexRQri4Pv2ifWfFE9ogEknIc',
+      title: title || 'Tiscobap - Gestion de Stock (152 & 124)',
+      url: url || `https://docs.google.com/spreadsheets/d/${id || '1YmMLdU0c547GqTnxmdxexRQri4Pv2ifWfFE9ogEknIc'}/edit`,
+      sharedBy: sharedBy || 'bansalahilyes@gmail.com',
+      token: token || existingToken || undefined,
+      webhookUrl: webhookUrl || existingWebhook || undefined,
+      updatedAt: new Date().toISOString(),
+    };
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(SHARED_FILE_PATH, JSON.stringify(data, null, 2), 'utf-8');
+    res.json({ success: true, sheet: data });
+  } catch (e: any) {
+    console.error('Error saving shared sheet config:', e);
+    res.status(500).json({ error: e?.message || 'Failed to save shared sheet config' });
+  }
+});
+
+// Helper to push values via Google Apps Script Webhook
+async function syncViaWebhook(webhookUrl: string, entrees: any[], sorties: any[]) {
+  try {
+    const payload = JSON.stringify({ entrees, sorties, timestamp: new Date().toISOString() });
+    const res = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: payload,
+      redirect: 'follow',
+    });
+    const text = await res.text();
+    console.log('Webhook response status:', res.status, text.slice(0, 200));
+    if (res.ok && (text.includes('success') || res.status === 200)) {
+      console.log('Successfully synced via Google Apps Script Webhook!');
+      return true;
+    }
+  } catch (err) {
+    console.warn('Webhook sync error:', err);
+  }
+  return false;
+}
+
+// Helper to push values directly to Google Sheets via Sheets API v4
+async function syncDataToGoogleSheets(sheetId: string, token: string, entrees: any[], sorties: any[]) {
+  // DISABLED: full overwrite of the sheet is forbidden. The sheet is the only source of truth.
+  console.warn('PROTECTION ACTIVE: full-sheet overwrite is disabled');
+  return false;
+  // CRITICAL SAFETY SHIELD: NEVER wipe Google Sheets if both entrees and sorties are empty
+  if (!Array.isArray(entrees) || !Array.isArray(sorties) || (entrees.length === 0 && sorties.length === 0)) {
+    console.warn('PROTECTION ACTIVE: Skipped syncing empty inventory to Google Sheets');
+    return false;
+  }
+  try {
+    // 1. Fetch metadata to inspect tabs
+    const metaRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=properties.title,sheets.properties(sheetId,title)`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!metaRes.ok) {
+      console.warn('Cannot fetch sheet metadata on server:', metaRes.status);
+      return false;
+    }
+    const meta = await metaRes.json();
+    const existingSheets = meta.sheets || [];
+    const titles: string[] = existingSheets.map((s: any) => s.properties?.title || '');
+
+    let entreeTitle = titles.find((t) => /entr[eé]|وارد|in/i.test(t));
+    let sortieTitle = titles.find((t) => /sort[ií]e|صادر|مبيع|out/i.test(t));
+    let syntheseTitle = titles.find((t) => /synth[eèé]se|ملخص|stock/i.test(t));
+
+    const requests: any[] = [];
+
+    // If 1 generic sheet, rename to Feuille 1 Entrée and add other 2
+    if (existingSheets.length === 1 && !entreeTitle && !sortieTitle && !syntheseTitle) {
+      const firstId = existingSheets[0].properties?.sheetId;
+      requests.push({
+        updateSheetProperties: {
+          properties: { sheetId: firstId, title: 'Feuille 1 Entrée' },
+          fields: 'title',
+        },
+      });
+      requests.push({ addSheet: { properties: { title: 'Feuille 2 Sortie' } } });
+      requests.push({ addSheet: { properties: { title: 'Feuille 3 Synthèse' } } });
+      entreeTitle = 'Feuille 1 Entrée';
+      sortieTitle = 'Feuille 2 Sortie';
+      syntheseTitle = 'Feuille 3 Synthèse';
+    } else {
+      if (!entreeTitle) {
+        if (!titles.includes('Feuille 1 Entrée')) {
+          requests.push({ addSheet: { properties: { title: 'Feuille 1 Entrée' } } });
+          entreeTitle = 'Feuille 1 Entrée';
+        } else {
+          entreeTitle = 'Feuille 1 Entrée';
+        }
+      }
+      if (!sortieTitle) {
+        if (!titles.includes('Feuille 2 Sortie')) {
+          requests.push({ addSheet: { properties: { title: 'Feuille 2 Sortie' } } });
+        }
+        sortieTitle = 'Feuille 2 Sortie';
+      }
+      if (!syntheseTitle) {
+        if (!titles.includes('Feuille 3 Synthèse')) {
+          requests.push({ addSheet: { properties: { title: 'Feuille 3 Synthèse' } } });
+        }
+        syntheseTitle = 'Feuille 3 Synthèse';
+      }
+    }
+
+    if (requests.length > 0) {
+      await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requests }),
+      }).catch(() => {});
+    }
+
+    const finalEntree = entreeTitle || 'Feuille 1 Entrée';
+    const finalSortie = sortieTitle || 'Feuille 2 Sortie';
+    const finalSynthese = syntheseTitle || 'Feuille 3 Synthèse';
+
+    const entreeRows = [
+      ['Date', '152 Vert', '152 Bleu', '152 Noir', '152 K.S', '152 K.F', '152 Gris', '124 Vert', '124 Bleu', 'Notes'],
+      ...entrees.map((item: any) => [
+        item.date || '',
+        Number(item.qty152Vert) || 0,
+        Number(item.qty152Bleu) || 0,
+        Number(item.qty152Noir) || 0,
+        Number(item.qty152KS) || 0,
+        Number(item.qty152KF) || 0,
+        Number(item.qty152Gris) || 0,
+        Number(item.qty124Vert) || 0,
+        Number(item.qty124Bleu) || 0,
+        item.notes || '',
+      ]),
+    ];
+
+    const sortieRows = [
+      ['Date', 'Client', 'Wilaya', '152 Vert', '152 Bleu', '152 Noir', '152 K.S', '152 K.F', '152 Gris', '124 Vert', '124 Bleu', 'Montant', 'Notes'],
+      ...sorties.map((item: any) => [
+        item.date || '',
+        item.client || '',
+        item.wilaya || '',
+        Number(item.qty152Vert) || 0,
+        Number(item.qty152Bleu) || 0,
+        Number(item.qty152Noir) || 0,
+        Number(item.qty152KS) || 0,
+        Number(item.qty152KF) || 0,
+        Number(item.qty152Gris) || 0,
+        Number(item.qty124Vert) || 0,
+        Number(item.qty124Bleu) || 0,
+        Number(item.montant) || 0,
+        item.notes || '',
+      ]),
+    ];
+
+    const syntheseRows = [
+      ['Produit', 'Total Entrées', 'Total Sorties', 'Stock Restant', 'Statut du Stock'],
+      ['152 Vert', `=SUM('${finalEntree}'!B2:B)`, `=SUM('${finalSortie}'!D2:D)`, '=B2 - C2', '=IF(D2<=10, "⚠️ Stock Faible", "✅ Disponible")'],
+      ['152 Bleu', `=SUM('${finalEntree}'!C2:C)`, `=SUM('${finalSortie}'!E2:E)`, '=B3 - C3', '=IF(D3<=10, "⚠️ Stock Faible", "✅ Disponible")'],
+      ['152 Noir', `=SUM('${finalEntree}'!D2:D)`, `=SUM('${finalSortie}'!F2:F)`, '=B4 - C4', '=IF(D4<=10, "⚠️ Stock Faible", "✅ Disponible")'],
+      ['152 K.S', `=SUM('${finalEntree}'!E2:E)`, `=SUM('${finalSortie}'!G2:G)`, '=B5 - C5', '=IF(D5<=10, "⚠️ Stock Faible", "✅ Disponible")'],
+      ['152 K.F', `=SUM('${finalEntree}'!F2:F)`, `=SUM('${finalSortie}'!H2:H)`, '=B6 - C6', '=IF(D6<=10, "⚠️ Stock Faible", "✅ Disponible")'],
+      ['152 Gris', `=SUM('${finalEntree}'!G2:G)`, `=SUM('${finalSortie}'!I2:I)`, '=B7 - C7', '=IF(D7<=10, "⚠️ Stock Faible", "✅ Disponible")'],
+      ['124 Vert', `=SUM('${finalEntree}'!H2:H)`, `=SUM('${finalSortie}'!J2:J)`, '=B8 - C8', '=IF(D8<=10, "⚠️ Stock Faible", "✅ Disponible")'],
+      ['124 Bleu', `=SUM('${finalEntree}'!I2:I)`, `=SUM('${finalSortie}'!K2:K)`, '=B9 - C9', '=IF(D9<=10, "⚠️ Stock Faible", "✅ Disponible")'],
+      ['', '', '', '', ''],
+      ['Chiffre d’affaires Total (Montant)', `=SUM('${finalSortie}'!L2:L)`, 'DZD', '', ''],
+    ];
+
+    // Clear old ranges first to avoid leftovers
+    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchClear`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ranges: [`'${finalEntree}'!A1:Z500`, `'${finalSortie}'!A1:Z500`, `'${finalSynthese}'!A1:Z50`],
+      }),
+    }).catch(() => {});
+
+    // Write updated data
+    const batchRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchUpdate`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        valueInputOption: 'USER_ENTERED',
+        data: [
+          { range: `'${finalEntree}'!A1`, values: entreeRows },
+          { range: `'${finalSortie}'!A1`, values: sortieRows },
+          { range: `'${finalSynthese}'!A1`, values: syntheseRows },
+        ],
+      }),
+    });
+
+    if (batchRes.ok) {
+      console.log('Successfully synced inventory to Google Sheets!');
+      return true;
+    } else {
+      console.warn('Batch write failed:', await batchRes.json().catch(() => ({})));
+      return false;
+    }
+  } catch (err) {
+    console.warn('Server Google Sheets sync error:', err);
+    return false;
+  }
+}
+
+// ---- Google Sheet = single source of truth (via Apps Script webhook) ----
+function getWebhookUrl(): string | undefined {
+  if (process.env.SHEET_WEBHOOK_URL) return process.env.SHEET_WEBHOOK_URL;
+  try {
+    if (fs.existsSync(SHARED_FILE_PATH)) {
+      return JSON.parse(fs.readFileSync(SHARED_FILE_PATH, 'utf-8')).webhookUrl || undefined;
+    }
+  } catch {}
+  return undefined;
+}
+
+// Legacy endpoint: pushing the whole inventory is no longer allowed (it caused data loss)
+app.post('/api/sync-now', (_req, res) => {
+  res.json({ success: true, readOnly: true, message: 'Full overwrite disabled; use row-level operations.' });
+});
+
+// Read: ALWAYS straight from the Google Sheet. Never from local/browser/server cache.
+app.get('/api/inventory', async (_req, res) => {
+  const url = getWebhookUrl();
+  if (!url) return res.status(503).json({ success: false, error: 'WEBHOOK_NOT_CONFIGURED' });
+  try {
+    const r = await fetch(`${url}${url.includes('?') ? '&' : '?'}action=read`, { redirect: 'follow' });
+    const json: any = await r.json();
+    if (json?.status !== 'ok' || !Array.isArray(json.entrees) || !Array.isArray(json.sorties)) {
+      return res.status(502).json({ success: false, error: json?.error || 'BAD_SHEET_RESPONSE' });
+    }
+    res.set('Cache-Control', 'no-store');
+    res.json({ success: true, data: { entrees: json.entrees, sorties: json.sorties, readAt: json.readAt } });
+  } catch (e: any) {
+    res.status(502).json({ success: false, error: e?.message || 'SHEET_UNREACHABLE' });
+  }
+});
+
+// Write: ONE row operation (add / update / delete). The sheet answers with its real state.
+app.post('/api/inventory/op', async (req, res) => {
+  const url = getWebhookUrl();
+  if (!url) return res.status(503).json({ success: false, error: 'WEBHOOK_NOT_CONFIGURED' });
+  const { action, sheet, item, id } = req.body || {};
+  if (!['add', 'update', 'delete'].includes(action) || !['entree', 'sortie'].includes(sheet)) {
+    return res.status(400).json({ success: false, error: 'BAD_OPERATION' });
+  }
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action, sheet, item, id }),
+      redirect: 'follow',
+    });
+    const json: any = await r.json();
+    if (json?.status !== 'success') {
+      return res.status(502).json({ success: false, error: json?.error || json?.message || 'SHEET_REJECTED' });
+    }
+    res.json({ success: true, data: { entrees: json.entrees, sorties: json.sorties } });
+  } catch (e: any) {
+    res.status(502).json({ success: false, error: e?.message || 'SHEET_UNREACHABLE' });
+  }
+});
+
+// Legacy full-state POST: ignored on purpose
+app.post('/api/inventory', (_req, res) => {
+  res.json({ success: true, ignored: true });
 });
 
 // Setup Vite dev server or static files
