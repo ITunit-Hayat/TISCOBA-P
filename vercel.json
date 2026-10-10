@@ -4,7 +4,6 @@
   "buildCommand": "vite build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "nodeVersion": "20.19.0",
   "rewrites": [
     {
       "source": "/((?!api/).*)",
