@@ -14,6 +14,7 @@ import { GoogleDriveSyncModal } from './components/GoogleDriveSyncModal';
 import { initAuth, getAccessToken, googleSignIn, isAccessDeniedError } from './services/googleAuth';
 import { 
   sendAppsScriptRequest,
+  submitPublicEntryToSheet,
   syncInventoryViaAppsScript,
   readInventoryViaAppsScript,
   createInventorySpreadsheet, 
@@ -781,7 +782,19 @@ export default function App() {
         setIsSyncingCloud(false);
       }
     } else {
-      setAutoSyncToast(lang === 'ar' ? 'تم حفظ الاستلام محلياً فقط؛ اربط Google Sheets للمزامنة.' : 'Entrée enregistrée localement; connectez Google Sheets pour synchroniser.');
+      setIsSyncingCloud(true);
+      try {
+        await submitPublicEntryToSheet('entree', newItem);
+        setLastSyncTime(new Date());
+        setAutoSyncToast(lang === 'ar' ? '✅ تم حفظ الاستلام مباشرة في Google Sheets.' : '✅ Entrée enregistrée directement dans Google Sheets.');
+        setTimeout(() => setAutoSyncToast(null), 3000);
+      } catch (err: any) {
+        setEntrees((prev) => prev.filter((item) => item.id !== newItem.id));
+        console.error('Public entree save failed:', err);
+        setAutoSyncToast(err.message || 'تعذر حفظ الاستلام في Google Sheets');
+      } finally {
+        setIsSyncingCloud(false);
+      }
     }
   };
 
@@ -839,7 +852,19 @@ export default function App() {
         setIsSyncingCloud(false);
       }
     } else {
-      setAutoSyncToast(lang === 'ar' ? 'تم حفظ البيع محلياً فقط؛ اربط Google Sheets للمزامنة.' : 'Sortie enregistrée localement; connectez Google Sheets pour synchroniser.');
+      setIsSyncingCloud(true);
+      try {
+        await submitPublicEntryToSheet('sortie', newItem);
+        setLastSyncTime(new Date());
+        setAutoSyncToast(lang === 'ar' ? '✅ تم حفظ البيع مباشرة في Google Sheets.' : '✅ Vente enregistrée directement dans Google Sheets.');
+        setTimeout(() => setAutoSyncToast(null), 3000);
+      } catch (err: any) {
+        setSorties((prev) => prev.filter((item) => item.id !== newItem.id));
+        console.error('Public sortie save failed:', err);
+        setAutoSyncToast(err.message || 'تعذر حفظ البيع في Google Sheets');
+      } finally {
+        setIsSyncingCloud(false);
+      }
     }
   };
 

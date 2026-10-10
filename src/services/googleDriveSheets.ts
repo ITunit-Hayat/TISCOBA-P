@@ -41,6 +41,21 @@ type AppsScriptRequest = {
   sorties?: SortieItem[];
 };
 
+export async function submitPublicEntryToSheet(
+  kind: 'entree' | 'sortie',
+  item: EntreeItem | SortieItem
+): Promise<void> {
+  const response = await fetch('/api/public-entry', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...item, kind }),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.status !== 'success') {
+    throw new Error(result.error || 'تعذر حفظ العملية في Google Sheets.');
+  }
+}
+
 export async function sendAppsScriptRequest(
   accessToken: string,
   request: AppsScriptRequest
