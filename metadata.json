@@ -1,0 +1,6 @@
+{
+  "name": "Stock & Google Sheets Manager",
+  "description": "Gestion complète des stocks Entrées et Sorties, calculs automatiques de balance, export Google Sheets et assistant IA d'inventaire.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
