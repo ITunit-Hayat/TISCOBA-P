@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAI, GEMINI_MODEL } from '../lib/gemini';
+import { getAI, GEMINI_MODEL } from '../lib/gemini.js';
 
 export const config = { maxDuration: 60 };
 

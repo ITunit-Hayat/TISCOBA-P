@@ -4,7 +4,7 @@ import {
   mutateGoogleSheetInventory,
   readGoogleSheetInventory,
   type InventoryKind,
-} from '../lib/googleSheets';
+} from '../lib/googleSheets.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'POST') {

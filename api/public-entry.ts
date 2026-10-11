@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { addPublicGoogleSheetEntry } from '../lib/googleSheets';
+import { addPublicGoogleSheetEntry } from '../lib/googleSheets.js';
 
 const PRODUCT_KEYS = [
   'qty152Vert',
