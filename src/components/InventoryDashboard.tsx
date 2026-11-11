@@ -231,7 +231,7 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
           };
       const shortages = Object.entries(quantities)
         .filter(([key, quantity]) => quantity > Math.max(0, currentStock[key as keyof typeof currentStock] || 0))
-        .map(([key, quantity]) => `${stockLabels[key]}: ${isAr ? 'المتاح' : 'disponible'} ${formatMeters(Math.max(0, currentStock[key as keyof typeof currentStock] || 0))} م، ${isAr ? 'المطلوب' : 'demandé'} ${formatMeters(quantity)} م`);
+        .map(([key, quantity]) => `${stockLabels[key]}: ${isAr ? 'المتاح' : 'disponible'} ${formatMeters(Math.max(0, currentStock[key as keyof typeof currentStock] || 0))} ${isAr ? 'م' : 'm'}، ${isAr ? 'المطلوب' : 'demandé'} ${formatMeters(quantity)} ${isAr ? 'م' : 'm'}`);
       if (shortages.length) {
         setFormErrorMessage(
           isAr
