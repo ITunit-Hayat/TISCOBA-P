@@ -207,7 +207,7 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
           };
       const shortages = Object.entries(quantities)
         .filter(([key, quantity]) => quantity > Math.max(0, currentStock[key as keyof typeof currentStock] || 0))
-        .map(([key, quantity]) => `${stockLabels[key]}: ${isAr ? 'المتاح' : 'disponible'} ${Math.max(0, currentStock[key as keyof typeof currentStock] || 0)}، ${isAr ? 'المطلوب' : 'demandé'} ${quantity}`);
+        .map(([key, quantity]) => `${stockLabels[key]}: ${isAr ? 'المتاح' : 'disponible'} ${formatMeters(Math.max(0, currentStock[key as keyof typeof currentStock] || 0))} م، ${isAr ? 'المطلوب' : 'demandé'} ${formatMeters(quantity)} م`);
       if (shortages.length) {
         setFormErrorMessage(
           isAr
@@ -620,8 +620,8 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
 
         {/* Error Banner */}
         {formErrorMessage && (
-          <div className="bg-amber-50 border-b border-amber-200 p-3 text-center text-xs font-bold text-amber-800 animate-in fade-in flex items-center justify-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600" />
+          <div role="alert" className="bg-red-50 border-b-2 border-red-300 p-3.5 text-center text-sm font-extrabold text-red-900 animate-in fade-in flex items-center justify-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
             <span>{formErrorMessage}</span>
           </div>
         )}
