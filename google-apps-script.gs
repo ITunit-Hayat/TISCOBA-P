@@ -80,6 +80,11 @@ function handleRequest(request) {
         var kind = validKind(request.sheet);
         var item = normalizeItem(kind, request.item);
         var context = getInventorySheet(spreadsheet, kind);
+        // Never allow a sale to make any product's stock negative. For an update,
+        // exclude the old version of the same sale before checking availability.
+        if (kind === 'sortie') {
+          assertSaleWithinStock(spreadsheet, item, action === 'update' ? item.id : null);
+        }
         if (action === 'update') {
           var updateRow = findItemRow(context, item.id);
           if (updateRow === -1) throw new Error('The inventory entry was not found. It may have been changed on another device.');
@@ -355,6 +360,41 @@ function readInventory(spreadsheet) {
   };
 }
 
+function assertSaleWithinStock(spreadsheet, sale, excludedSaleId) {
+  var data = readInventory(spreadsheet);
+  var totalsIn = {};
+  var totalsOut = {};
+  CONFIG.quantities.forEach(function (key) {
+    totalsIn[key] = 0;
+    totalsOut[key] = 0;
+  });
+
+  data.entrees.forEach(function (entry) {
+    CONFIG.quantities.forEach(function (key) {
+      totalsIn[key] += Number(entry[key]) || 0;
+    });
+  });
+  data.sorties.forEach(function (existingSale) {
+    // During an update, the old sale is replaced, not added twice.
+    if (excludedSaleId && String(existingSale.id) === String(excludedSaleId)) return;
+    CONFIG.quantities.forEach(function (key) {
+      totalsOut[key] += Number(existingSale[key]) || 0;
+    });
+  });
+
+  var shortages = [];
+  CONFIG.quantities.forEach(function (key) {
+    var available = totalsIn[key] - totalsOut[key];
+    var requested = Number(sale[key]) || 0;
+    if (requested > available + 1e-9) {
+      shortages.push(CONFIG.labels[key] + ': available ' + Math.max(0, available) + ', requested ' + requested);
+    }
+  });
+  if (shortages.length) {
+    throw new Error('Insufficient stock. Sale rejected. ' + shortages.join('; '));
+  }
+}
+
 function logMutation(spreadsheet, action, sheetName, before, after) {
   var journal = spreadsheet.getSheetByName('Journal');
   if (!journal) journal = spreadsheet.insertSheet('Journal');
@@ -412,7 +452,7 @@ function ensureSynthesis(spreadsheet) {
       '=SUM(' + quoteSheetName(entree.sheet.getName()) + '!' + inCol + '2:' + inCol + ')',
       '=SUM(' + quoteSheetName(sortie.sheet.getName()) + '!' + outCol + '2:' + outCol + ')',
       '=B' + rowNumber + '-C' + rowNumber,
-      '=IF(D' + rowNumber + '<=10, "⚠️ Stock Faible", "✅ Disponible")'
+      '=IF(D' + rowNumber + '<0, "⛔ Stock déficitaire", IF(D' + rowNumber + '=0, "⚪ Épuisé", IF(D' + rowNumber + '<=10, "⚠️ Bientôt épuisé", "✅ Disponible")))'
     ]);
   });
   rows.push(['', '', '', '', '']);
