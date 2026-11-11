@@ -101,14 +101,14 @@ export default function App() {
     };
 
     return {
-      qty152Vert: Math.max(0, totalIn.qty152Vert - totalOut.qty152Vert),
-      qty152Bleu: Math.max(0, totalIn.qty152Bleu - totalOut.qty152Bleu),
-      qty152Noir: Math.max(0, totalIn.qty152Noir - totalOut.qty152Noir),
-      qty152KS: Math.max(0, totalIn.qty152KS - totalOut.qty152KS),
-      qty152KF: Math.max(0, totalIn.qty152KF - totalOut.qty152KF),
-      qty152Gris: Math.max(0, totalIn.qty152Gris - totalOut.qty152Gris),
-      qty124Vert: Math.max(0, totalIn.qty124Vert - totalOut.qty124Vert),
-      qty124Bleu: Math.max(0, totalIn.qty124Bleu - totalOut.qty124Bleu),
+      qty152Vert: totalIn.qty152Vert - totalOut.qty152Vert,
+      qty152Bleu: totalIn.qty152Bleu - totalOut.qty152Bleu,
+      qty152Noir: totalIn.qty152Noir - totalOut.qty152Noir,
+      qty152KS: totalIn.qty152KS - totalOut.qty152KS,
+      qty152KF: totalIn.qty152KF - totalOut.qty152KF,
+      qty152Gris: totalIn.qty152Gris - totalOut.qty152Gris,
+      qty124Vert: totalIn.qty124Vert - totalOut.qty124Vert,
+      qty124Bleu: totalIn.qty124Bleu - totalOut.qty124Bleu,
     };
   }, [entrees, sorties]);
 
