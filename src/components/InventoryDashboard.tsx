@@ -82,6 +82,61 @@ function formatMeters(value: number): string {
   return v.toFixed(2);
 }
 
+const STOCK_QUANTITY_KEYS = [
+  'qty152Vert',
+  'qty152Bleu',
+  'qty152Noir',
+  'qty152KS',
+  'qty152KF',
+  'qty152Gris',
+  'qty124Vert',
+  'qty124Bleu',
+] as const;
+
+type StockQuantityKey = (typeof STOCK_QUANTITY_KEYS)[number];
+
+function calculateCurrentCycleTotals(
+  entrees: EntreeItem[],
+  sorties: SortieItem[],
+): Record<StockQuantityKey, { entree: number; sortie: number }> {
+  const movements = [
+    ...entrees.map((item) => ({ type: 'entree' as const, item })),
+    ...sorties.map((item) => ({ type: 'sortie' as const, item })),
+  ].sort((a, b) => {
+    const dateOrder = a.item.date.localeCompare(b.item.date);
+    if (dateOrder !== 0) return dateOrder;
+    // If timestamps are unavailable, count same-day receipts before sales.
+    return a.type === b.type ? 0 : a.type === 'entree' ? -1 : 1;
+  });
+
+  const totals = Object.fromEntries(
+    STOCK_QUANTITY_KEYS.map((key) => [key, { entree: 0, sortie: 0, balance: 0 }]),
+  ) as Record<StockQuantityKey, { entree: number; sortie: number; balance: number }>;
+
+  movements.forEach(({ type, item }) => {
+    STOCK_QUANTITY_KEYS.forEach((key) => {
+      const quantity = Number(item[key]) || 0;
+      if (type === 'entree') {
+        totals[key].entree += quantity;
+        totals[key].balance += quantity;
+      } else {
+        totals[key].sortie += quantity;
+        totals[key].balance -= quantity;
+      }
+
+      // Reset only the displayed cycle totals after this product is fully depleted.
+      // The original movement records and the authoritative stock calculation remain untouched.
+      if (Math.abs(totals[key].balance) < 1e-9) {
+        totals[key].entree = 0;
+        totals[key].sortie = 0;
+        totals[key].balance = 0;
+      }
+    });
+  });
+
+  return totals;
+}
+
 function localizeSaveError(error: unknown, isAr: boolean): string {
   const raw = error instanceof Error ? error.message : String(error || '');
   if (!raw.startsWith('INSUFFICIENT_STOCK|')) return raw;
@@ -163,24 +218,28 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
     notes: '',
   });
 
-  // Calculate totals for all 8 products
-  const totalEntree152V = useMemo(() => entrees.reduce((acc, i) => acc + (Number(i.qty152Vert) || 0), 0), [entrees]);
-  const totalEntree152B = useMemo(() => entrees.reduce((acc, i) => acc + (Number(i.qty152Bleu) || 0), 0), [entrees]);
-  const totalEntree152N = useMemo(() => entrees.reduce((acc, i) => acc + (Number(i.qty152Noir) || 0), 0), [entrees]);
-  const totalEntree152KS = useMemo(() => entrees.reduce((acc, i) => acc + (Number(i.qty152KS) || 0), 0), [entrees]);
-  const totalEntree152KF = useMemo(() => entrees.reduce((acc, i) => acc + (Number(i.qty152KF) || 0), 0), [entrees]);
-  const totalEntree152G = useMemo(() => entrees.reduce((acc, i) => acc + (Number(i.qty152Gris) || 0), 0), [entrees]);
-  const totalEntree124V = useMemo(() => entrees.reduce((acc, i) => acc + (Number(i.qty124Vert) || 0), 0), [entrees]);
-  const totalEntree124B = useMemo(() => entrees.reduce((acc, i) => acc + (Number(i.qty124Bleu) || 0), 0), [entrees]);
+  // Per-product displayed E/S totals for the current, not-yet-depleted stock cycle.
+  const cycleTotals = useMemo(
+    () => calculateCurrentCycleTotals(entrees, sorties),
+    [entrees, sorties],
+  );
+  const totalEntree152V = cycleTotals.qty152Vert.entree;
+  const totalEntree152B = cycleTotals.qty152Bleu.entree;
+  const totalEntree152N = cycleTotals.qty152Noir.entree;
+  const totalEntree152KS = cycleTotals.qty152KS.entree;
+  const totalEntree152KF = cycleTotals.qty152KF.entree;
+  const totalEntree152G = cycleTotals.qty152Gris.entree;
+  const totalEntree124V = cycleTotals.qty124Vert.entree;
+  const totalEntree124B = cycleTotals.qty124Bleu.entree;
 
-  const totalSortie152V = useMemo(() => sorties.reduce((acc, i) => acc + (Number(i.qty152Vert) || 0), 0), [sorties]);
-  const totalSortie152B = useMemo(() => sorties.reduce((acc, i) => acc + (Number(i.qty152Bleu) || 0), 0), [sorties]);
-  const totalSortie152N = useMemo(() => sorties.reduce((acc, i) => acc + (Number(i.qty152Noir) || 0), 0), [sorties]);
-  const totalSortie152KS = useMemo(() => sorties.reduce((acc, i) => acc + (Number(i.qty152KS) || 0), 0), [sorties]);
-  const totalSortie152KF = useMemo(() => sorties.reduce((acc, i) => acc + (Number(i.qty152KF) || 0), 0), [sorties]);
-  const totalSortie152G = useMemo(() => sorties.reduce((acc, i) => acc + (Number(i.qty152Gris) || 0), 0), [sorties]);
-  const totalSortie124V = useMemo(() => sorties.reduce((acc, i) => acc + (Number(i.qty124Vert) || 0), 0), [sorties]);
-  const totalSortie124B = useMemo(() => sorties.reduce((acc, i) => acc + (Number(i.qty124Bleu) || 0), 0), [sorties]);
+  const totalSortie152V = cycleTotals.qty152Vert.sortie;
+  const totalSortie152B = cycleTotals.qty152Bleu.sortie;
+  const totalSortie152N = cycleTotals.qty152Noir.sortie;
+  const totalSortie152KS = cycleTotals.qty152KS.sortie;
+  const totalSortie152KF = cycleTotals.qty152KF.sortie;
+  const totalSortie152G = cycleTotals.qty152Gris.sortie;
+  const totalSortie124V = cycleTotals.qty124Vert.sortie;
+  const totalSortie124B = cycleTotals.qty124Bleu.sortie;
 
   const totalMontant = useMemo(() => sorties.reduce((acc, i) => acc + (Number(i.montant) || 0), 0), [sorties]);
 
