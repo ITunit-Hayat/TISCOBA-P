@@ -62,15 +62,24 @@ type CombinedRow =
   | { type: 'entree'; item: EntreeItem }
   | { type: 'sortie'; item: SortieItem };
 
+/** تقريب إلى رقمين عشريين لتجنب أخطاء الفاصلة العائمة في جافاسكريبت (0.1+0.2 != 0.3). */
+function round2(value: number): number {
+  return Math.round((value || 0) * 100) / 100;
+}
+
 function stockStatus(value: number, isAr: boolean): string {
-  if (value < 0) return isAr ? '⛔ عجز في المخزون' : '⛔ Stock déficitaire';
-  if (value === 0) return isAr ? '⚪ فارغ' : '⚪ Épuisé';
-  if (value <= 10) return isAr ? '⚠️ على وشك النفاذ' : '⚠️ Bientôt épuisé';
+  const v = round2(value);
+  if (v < 0) return isAr ? '⛔ عجز في المخزون' : '⛔ Stock déficitaire';
+  if (v === 0) return isAr ? '⚪ فارغ' : '⚪ Épuisé';
+  if (v <= 10) return isAr ? '⚠️ على وشك النفاذ' : '⚠️ Bientôt épuisé';
   return isAr ? '✅ متوفر' : '✅ Disponible';
 }
 
 function formatMeters(value: number): string {
-  return Number(value || 0).toFixed(2);
+  const v = round2(value);
+  // تجنب ظهور "-0.00" عندما يكون الرقم سالباً بقيمة ضئيلة جداً تقارب الصفر
+  if (v === 0) return '0.00';
+  return v.toFixed(2);
 }
 
 function localizeSaveError(error: unknown, isAr: boolean): string {
@@ -230,7 +239,7 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
             qty124Vert: '124 Vert', qty124Bleu: '124 Bleu',
           };
       const shortages = Object.entries(quantities)
-        .filter(([key, quantity]) => quantity > Math.max(0, currentStock[key as keyof typeof currentStock] || 0))
+        .filter(([key, quantity]) => quantity > Math.max(0, round2(currentStock[key as keyof typeof currentStock] || 0)))
         .map(([key, quantity]) => `${stockLabels[key]}: ${isAr ? 'المتاح' : 'disponible'} ${formatMeters(Math.max(0, currentStock[key as keyof typeof currentStock] || 0))} ${isAr ? 'م' : 'm'}، ${isAr ? 'المطلوب' : 'demandé'} ${formatMeters(quantity)} ${isAr ? 'م' : 'm'}`);
       if (shortages.length) {
         setFormErrorMessage(
