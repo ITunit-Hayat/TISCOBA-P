@@ -101,14 +101,14 @@ export default function App() {
     };
 
     return {
-      qty152Vert: totalIn.qty152Vert - totalOut.qty152Vert,
-      qty152Bleu: totalIn.qty152Bleu - totalOut.qty152Bleu,
-      qty152Noir: totalIn.qty152Noir - totalOut.qty152Noir,
-      qty152KS: totalIn.qty152KS - totalOut.qty152KS,
-      qty152KF: totalIn.qty152KF - totalOut.qty152KF,
-      qty152Gris: totalIn.qty152Gris - totalOut.qty152Gris,
-      qty124Vert: totalIn.qty124Vert - totalOut.qty124Vert,
-      qty124Bleu: totalIn.qty124Bleu - totalOut.qty124Bleu,
+      qty152Vert: Math.round((totalIn.qty152Vert - totalOut.qty152Vert) * 100) / 100,
+      qty152Bleu: Math.round((totalIn.qty152Bleu - totalOut.qty152Bleu) * 100) / 100,
+      qty152Noir: Math.round((totalIn.qty152Noir - totalOut.qty152Noir) * 100) / 100,
+      qty152KS:   Math.round((totalIn.qty152KS   - totalOut.qty152KS)   * 100) / 100,
+      qty152KF:   Math.round((totalIn.qty152KF   - totalOut.qty152KF)   * 100) / 100,
+      qty152Gris: Math.round((totalIn.qty152Gris - totalOut.qty152Gris) * 100) / 100,
+      qty124Vert: Math.round((totalIn.qty124Vert - totalOut.qty124Vert) * 100) / 100,
+      qty124Bleu: Math.round((totalIn.qty124Bleu - totalOut.qty124Bleu) * 100) / 100,
     };
   }, [entrees, sorties]);
 
