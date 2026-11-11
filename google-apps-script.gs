@@ -386,7 +386,9 @@ function assertSaleWithinStock(spreadsheet, sale, excludedSaleId) {
   CONFIG.quantities.forEach(function (key) {
     var available = totalsIn[key] - totalsOut[key];
     var requested = Number(sale[key]) || 0;
-    if (requested > available + 1e-9) {
+    // An exhausted/deficit product that is not part of this sale must not
+    // block the other products. Validate only quantities actually requested.
+    if (requested > 0 && requested > available + 1e-9) {
       shortages.push(CONFIG.labels[key] + ': available ' + Math.max(0, available) + ', requested ' + requested);
     }
   });

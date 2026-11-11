@@ -73,6 +73,14 @@ function formatMeters(value: number): string {
   return Number(value || 0).toFixed(2);
 }
 
+function formatDZD(value: number): string {
+  return `${new Intl.NumberFormat('fr-FR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    useGrouping: true,
+  }).format(Number(value) || 0).replace(/\u202f/g, ' ')} DA`;
+}
+
 export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
   entrees,
   sorties,
@@ -569,7 +577,7 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                 {isAr ? 'المداخيل' : 'Chiffre d’affaires'}
               </span>
               <div className="text-xl sm:text-2xl font-black text-amber-900 mt-0.5 font-mono">
-                {totalMontant.toLocaleString()} <span className="text-xs font-bold text-amber-700">دج</span>
+                {formatDZD(totalMontant)}
               </div>
               <div className="text-[10px] text-neutral-500 mt-0.5">
                 {isAr ? `${sorties.length} عملية بيع` : `${sorties.length} ventes`}
@@ -1251,7 +1259,7 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                     {formatMeters(currentStock.qty152Vert + currentStock.qty152Bleu + currentStock.qty152Noir + currentStock.qty152KS + currentStock.qty152KF + currentStock.qty152Gris + currentStock.qty124Vert + currentStock.qty124Bleu)} {isAr ? 'م' : 'm'}
                   </td>
                   <td className="py-3 px-4 text-end text-amber-900 font-mono text-sm">
-                    {totalMontant.toLocaleString()} دج
+                    {formatDZD(totalMontant)}
                   </td>
                 </tr>
               </tfoot>
@@ -1412,7 +1420,7 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                         {/* Montant */}
                         <td className="py-3 px-3 text-end font-mono font-bold whitespace-nowrap text-amber-900">
                           {!isEntree && (row.item as SortieItem).montant > 0 ? (
-                            `${(row.item as SortieItem).montant.toLocaleString()} دج`
+                            formatDZD((row.item as SortieItem).montant)
                           ) : (
                             <span className="text-neutral-300">-</span>
                           )}
