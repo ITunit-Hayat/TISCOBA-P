@@ -73,6 +73,30 @@ function formatMeters(value: number): string {
   return Number(value || 0).toFixed(2);
 }
 
+function localizeSaveError(error: unknown, isAr: boolean): string {
+  const raw = error instanceof Error ? error.message : String(error || '');
+  if (!raw.startsWith('INSUFFICIENT_STOCK|')) return raw;
+
+  const labelsAr: Record<string, string> = {
+    '152 Vert': '152 أخضر', '152 Bleu': '152 أزرق', '152 Noir': '152 أسود',
+    '152 K.S': '152 K.S', '152 K.F': '152 K.F', '152 Gris': '152 رمادي',
+    '124 Vert': '124 أخضر', '124 Bleu': '124 أزرق',
+  };
+  const details = raw.slice('INSUFFICIENT_STOCK|'.length).split(';').map((part) => {
+    const match = part.trim().match(/^(.+): available ([\d.-]+) m, requested ([\d.-]+) m$/);
+    if (!match) return part.trim();
+    const [, label, available, requested] = match;
+    const localizedLabel = isAr ? (labelsAr[label] || label) : label;
+    return isAr
+      ? `${localizedLabel}: المتاح ${available} م، المطلوب ${requested} م`
+      : `${localizedLabel}: disponible ${available} m, demandé ${requested} m`;
+  }).filter(Boolean).join(isAr ? '؛ ' : '; ');
+
+  return isAr
+    ? `⚠️ لا يمكن إتمام البيع: الكمية المطلوبة أكبر من المخزون المتاح. ${details}`
+    : `⚠️ Vente impossible : la quantité demandée dépasse le stock disponible. ${details}`;
+}
+
 export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
   entrees,
   sorties,
@@ -256,7 +280,7 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
       handleResetForm();
       setTimeout(() => setFormSuccessMessage(null), 4500);
     } catch (error) {
-      const message = error instanceof Error ? error.message : (isAr ? 'تعذر حفظ العملية.' : 'Impossible d’enregistrer l’opération.');
+      const message = localizeSaveError(error, isAr) || (isAr ? 'تعذر حفظ العملية.' : 'Impossible d’enregistrer l’opération.');
       setFormErrorMessage(message);
     } finally {
       setIsSavingForm(false);
@@ -615,14 +639,6 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
           <div className="bg-emerald-50 border-b border-emerald-200 p-3 text-center text-xs font-bold text-emerald-800 animate-in fade-in flex items-center justify-center gap-2">
             <Check className="w-4 h-4 text-emerald-600" />
             <span>{formSuccessMessage}</span>
-          </div>
-        )}
-
-        {/* Error Banner */}
-        {formErrorMessage && (
-          <div role="alert" className="bg-red-50 border-b-2 border-red-300 p-3.5 text-center text-sm font-extrabold text-red-900 animate-in fade-in flex items-center justify-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
-            <span>{formErrorMessage}</span>
           </div>
         )}
 
@@ -1690,6 +1706,38 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Stock/save error dialog */}
+      {formErrorMessage && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="stock-error-title"
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-neutral-950/65 backdrop-blur-xs animate-in fade-in"
+        >
+          <div className="bg-white rounded-2xl shadow-2xl border-2 border-red-200 w-full max-w-md p-6 text-center space-y-4">
+            <div className="w-14 h-14 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-7 h-7" />
+            </div>
+            <div>
+              <h3 id="stock-error-title" className="text-lg font-black text-red-900">
+                {isAr ? 'تنبيه: لا يمكن إتمام البيع' : 'Alerte : vente impossible'}
+              </h3>
+              <p className="text-sm font-bold text-neutral-700 mt-2 leading-7 whitespace-pre-line">
+                {formErrorMessage}
+              </p>
+            </div>
+            <button
+              type="button"
+              autoFocus
+              onClick={() => setFormErrorMessage(null)}
+              className="w-full px-5 py-3 bg-red-600 text-white rounded-xl font-black text-sm hover:bg-red-700 transition shadow-md"
+            >
+              {isAr ? 'حسناً، فهمت' : 'OK, compris'}
+            </button>
           </div>
         </div>
       )}

@@ -389,11 +389,11 @@ function assertSaleWithinStock(spreadsheet, sale, excludedSaleId) {
     // An exhausted/deficit product that is not part of this sale must not
     // block the other products. Validate only quantities actually requested.
     if (requested > 0 && requested > available + 1e-9) {
-      shortages.push(CONFIG.labels[key] + ': المتاح ' + Math.max(0, available).toFixed(2) + ' م، المطلوب ' + requested.toFixed(2) + ' م');
+      shortages.push(CONFIG.labels[key] + ': available ' + Math.max(0, available).toFixed(2) + ' m, requested ' + requested.toFixed(2) + ' m');
     }
   });
   if (shortages.length) {
-    throw new Error('⚠️ لا يمكن إتمام البيع: الكمية المطلوبة أكبر من المخزون المتاح. ' + shortages.join('؛ '));
+    throw new Error('INSUFFICIENT_STOCK|' + shortages.join('; '));
   }
 }
 
