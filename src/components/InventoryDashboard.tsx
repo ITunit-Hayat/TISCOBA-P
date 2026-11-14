@@ -528,8 +528,8 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                 <span className="text-xs font-semibold text-neutral-500">{isAr ? 'م' : 'm'}</span>
               </div>
               <div className="text-[10px] text-neutral-500 mt-1 font-medium truncate">
-                <span className="text-emerald-700 font-bold">E {formatMeters(totalEntree152V)} {isAr ? 'م' : 'm'}</span> /{' '}
-                <span className="text-neutral-700 font-bold">S {formatMeters(totalSortie152V)} {isAr ? 'م' : 'm'}</span>
+                <span className="text-emerald-700 font-bold">E {formatMeters(currentStock.qty152Vert)} {isAr ? 'م' : 'm'}</span> /{' '}
+                <span className="text-neutral-700 font-bold">S {formatMeters(0)} {isAr ? 'م' : 'm'}</span>
               </div>
             </div>
 
@@ -544,8 +544,8 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                 <span className="text-xs font-semibold text-neutral-500">{isAr ? 'م' : 'm'}</span>
               </div>
               <div className="text-[10px] text-neutral-500 mt-1 font-medium truncate">
-                <span className="text-blue-700 font-bold">E {formatMeters(totalEntree152B)} {isAr ? 'م' : 'm'}</span> /{' '}
-                <span className="text-neutral-700 font-bold">S {formatMeters(totalSortie152B)} {isAr ? 'م' : 'm'}</span>
+                <span className="text-blue-700 font-bold">E {formatMeters(currentStock.qty152Bleu)} {isAr ? 'م' : 'm'}</span> /{' '}
+                <span className="text-neutral-700 font-bold">S {formatMeters(0)} {isAr ? 'م' : 'm'}</span>
               </div>
             </div>
 
@@ -560,8 +560,8 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                 <span className="text-xs font-semibold text-neutral-500">{isAr ? 'م' : 'm'}</span>
               </div>
               <div className="text-[10px] text-neutral-500 mt-1 font-medium truncate">
-                <span className="text-neutral-900 font-bold">E {formatMeters(totalEntree152N)} {isAr ? 'م' : 'm'}</span> /{' '}
-                <span className="text-neutral-700 font-bold">S {formatMeters(totalSortie152N)} {isAr ? 'م' : 'm'}</span>
+                <span className="text-neutral-900 font-bold">E {formatMeters(currentStock.qty152Noir)} {isAr ? 'م' : 'm'}</span> /{' '}
+                <span className="text-neutral-700 font-bold">S {formatMeters(0)} {isAr ? 'م' : 'm'}</span>
               </div>
             </div>
 
@@ -576,8 +576,8 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                 <span className="text-xs font-semibold text-neutral-500">{isAr ? 'م' : 'm'}</span>
               </div>
               <div className="text-[10px] text-neutral-500 mt-1 font-medium truncate">
-                <span className="text-amber-800 font-bold">E {formatMeters(totalEntree152KS)} {isAr ? 'م' : 'm'}</span> /{' '}
-                <span className="text-neutral-700 font-bold">S {formatMeters(totalSortie152KS)} {isAr ? 'م' : 'm'}</span>
+                <span className="text-amber-800 font-bold">E {formatMeters(currentStock.qty152KS)} {isAr ? 'م' : 'm'}</span> /{' '}
+                <span className="text-neutral-700 font-bold">S {formatMeters(0)} {isAr ? 'م' : 'm'}</span>
               </div>
             </div>
 
@@ -592,8 +592,8 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                 <span className="text-xs font-semibold text-neutral-500">{isAr ? 'م' : 'm'}</span>
               </div>
               <div className="text-[10px] text-neutral-500 mt-1 font-medium truncate">
-                <span className="text-amber-900 font-bold">E {formatMeters(totalEntree152KF)} {isAr ? 'م' : 'm'}</span> /{' '}
-                <span className="text-neutral-700 font-bold">S {formatMeters(totalSortie152KF)} {isAr ? 'م' : 'm'}</span>
+                <span className="text-amber-900 font-bold">E {formatMeters(currentStock.qty152KF)} {isAr ? 'م' : 'm'}</span> /{' '}
+                <span className="text-neutral-700 font-bold">S {formatMeters(0)} {isAr ? 'م' : 'm'}</span>
               </div>
             </div>
 
@@ -608,8 +608,8 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                 <span className="text-xs font-semibold text-neutral-500">{isAr ? 'م' : 'm'}</span>
               </div>
               <div className="text-[10px] text-neutral-500 mt-1 font-medium truncate">
-                <span className="text-slate-700 font-bold">E {formatMeters(totalEntree152G)} {isAr ? 'م' : 'm'}</span> /{' '}
-                <span className="text-neutral-700 font-bold">S {formatMeters(totalSortie152G)} {isAr ? 'م' : 'm'}</span>
+                <span className="text-slate-700 font-bold">E {formatMeters(currentStock.qty152Gris)} {isAr ? 'م' : 'm'}</span> /{' '}
+                <span className="text-neutral-700 font-bold">S {formatMeters(0)} {isAr ? 'م' : 'm'}</span>
               </div>
             </div>
           </div>
@@ -634,8 +634,8 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                 <span className="text-xs font-semibold text-neutral-500">{isAr ? 'م' : 'm'}</span>
               </div>
               <div className="text-[10px] text-neutral-500 mt-1 font-medium truncate">
-                <span className="text-teal-700 font-bold">E {formatMeters(totalEntree124V)} {isAr ? 'م' : 'm'}</span> /{' '}
-                <span className="text-neutral-700 font-bold">S {formatMeters(totalSortie124V)} {isAr ? 'م' : 'm'}</span>
+                <span className="text-teal-700 font-bold">E {formatMeters(currentStock.qty124Vert)} {isAr ? 'م' : 'm'}</span> /{' '}
+                <span className="text-neutral-700 font-bold">S {formatMeters(0)} {isAr ? 'م' : 'm'}</span>
               </div>
             </div>
 
@@ -650,8 +650,8 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                 <span className="text-xs font-semibold text-neutral-500">{isAr ? 'م' : 'm'}</span>
               </div>
               <div className="text-[10px] text-neutral-500 mt-1 font-medium truncate">
-                <span className="text-sky-700 font-bold">E {formatMeters(totalEntree124B)} {isAr ? 'م' : 'm'}</span> /{' '}
-                <span className="text-neutral-700 font-bold">S {formatMeters(totalSortie124B)} {isAr ? 'م' : 'm'}</span>
+                <span className="text-sky-700 font-bold">E {formatMeters(currentStock.qty124Bleu)} {isAr ? 'م' : 'm'}</span> /{' '}
+                <span className="text-neutral-700 font-bold">S {formatMeters(0)} {isAr ? 'م' : 'm'}</span>
               </div>
             </div>
 
@@ -1192,8 +1192,8 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                     152 Vert
                   </td>
                   <td className="py-2.5 px-3 text-center text-neutral-500 font-mono">0 {isAr ? 'م' : 'm'}</td>
-                  <td className="py-2.5 px-3 text-center font-bold text-emerald-700 font-mono">+{formatMeters(totalEntree152V)} {isAr ? 'م' : 'm'}</td>
-                  <td className="py-2.5 px-3 text-center font-bold text-blue-700 font-mono">-{formatMeters(totalSortie152V)} {isAr ? 'م' : 'm'}</td>
+                  <td className="py-2.5 px-3 text-center font-bold text-emerald-700 font-mono">+{formatMeters(currentStock.qty152Vert)} {isAr ? 'م' : 'm'}</td>
+                  <td className="py-2.5 px-3 text-center font-bold text-blue-700 font-mono">-{formatMeters(0)} {isAr ? 'م' : 'm'}</td>
                   <td className="py-2.5 px-3 text-center font-black text-emerald-800 bg-emerald-50 text-sm font-mono">
                     {formatMeters(currentStock.qty152Vert)} <span className="text-xs font-semibold">{isAr ? 'م' : 'm'}</span>
                   </td>
@@ -1209,8 +1209,8 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                     152 Bleu
                   </td>
                   <td className="py-2.5 px-3 text-center text-neutral-500 font-mono">0 {isAr ? 'م' : 'm'}</td>
-                  <td className="py-2.5 px-3 text-center font-bold text-emerald-700 font-mono">+{formatMeters(totalEntree152B)} {isAr ? 'م' : 'm'}</td>
-                  <td className="py-2.5 px-3 text-center font-bold text-blue-700 font-mono">-{formatMeters(totalSortie152B)} {isAr ? 'م' : 'm'}</td>
+                  <td className="py-2.5 px-3 text-center font-bold text-emerald-700 font-mono">+{formatMeters(currentStock.qty152Bleu)} {isAr ? 'م' : 'm'}</td>
+                  <td className="py-2.5 px-3 text-center font-bold text-blue-700 font-mono">-{formatMeters(0)} {isAr ? 'م' : 'm'}</td>
                   <td className="py-2.5 px-3 text-center font-black text-blue-800 bg-blue-50 text-sm font-mono">
                     {formatMeters(currentStock.qty152Bleu)} <span className="text-xs font-semibold">{isAr ? 'م' : 'm'}</span>
                   </td>
@@ -1226,8 +1226,8 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                     152 Noir
                   </td>
                   <td className="py-2.5 px-3 text-center text-neutral-500 font-mono">0 {isAr ? 'م' : 'm'}</td>
-                  <td className="py-2.5 px-3 text-center font-bold text-emerald-700 font-mono">+{formatMeters(totalEntree152N)} {isAr ? 'م' : 'm'}</td>
-                  <td className="py-2.5 px-3 text-center font-bold text-blue-700 font-mono">-{formatMeters(totalSortie152N)} {isAr ? 'م' : 'm'}</td>
+                  <td className="py-2.5 px-3 text-center font-bold text-emerald-700 font-mono">+{formatMeters(currentStock.qty152Noir)} {isAr ? 'م' : 'm'}</td>
+                  <td className="py-2.5 px-3 text-center font-bold text-blue-700 font-mono">-{formatMeters(0)} {isAr ? 'م' : 'm'}</td>
                   <td className="py-2.5 px-3 text-center font-black text-neutral-900 bg-neutral-100 text-sm font-mono">
                     {formatMeters(currentStock.qty152Noir)} <span className="text-xs font-semibold">{isAr ? 'م' : 'm'}</span>
                   </td>
@@ -1243,8 +1243,8 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                     152 K.S
                   </td>
                   <td className="py-2.5 px-3 text-center text-neutral-500 font-mono">0 {isAr ? 'م' : 'm'}</td>
-                  <td className="py-2.5 px-3 text-center font-bold text-emerald-700 font-mono">+{formatMeters(totalEntree152KS)} {isAr ? 'م' : 'm'}</td>
-                  <td className="py-2.5 px-3 text-center font-bold text-blue-700 font-mono">-{formatMeters(totalSortie152KS)} {isAr ? 'م' : 'm'}</td>
+                  <td className="py-2.5 px-3 text-center font-bold text-emerald-700 font-mono">+{formatMeters(currentStock.qty152KS)} {isAr ? 'م' : 'm'}</td>
+                  <td className="py-2.5 px-3 text-center font-bold text-blue-700 font-mono">-{formatMeters(0)} {isAr ? 'م' : 'm'}</td>
                   <td className="py-2.5 px-3 text-center font-black text-amber-900 bg-amber-50 text-sm font-mono">
                     {formatMeters(currentStock.qty152KS)} <span className="text-xs font-semibold">{isAr ? 'م' : 'm'}</span>
                   </td>
@@ -1260,8 +1260,8 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                     152 K.F
                   </td>
                   <td className="py-2.5 px-3 text-center text-neutral-500 font-mono">0 {isAr ? 'م' : 'm'}</td>
-                  <td className="py-2.5 px-3 text-center font-bold text-emerald-700 font-mono">+{formatMeters(totalEntree152KF)} {isAr ? 'م' : 'm'}</td>
-                  <td className="py-2.5 px-3 text-center font-bold text-blue-700 font-mono">-{formatMeters(totalSortie152KF)} {isAr ? 'م' : 'm'}</td>
+                  <td className="py-2.5 px-3 text-center font-bold text-emerald-700 font-mono">+{formatMeters(currentStock.qty152KF)} {isAr ? 'م' : 'm'}</td>
+                  <td className="py-2.5 px-3 text-center font-bold text-blue-700 font-mono">-{formatMeters(0)} {isAr ? 'م' : 'm'}</td>
                   <td className="py-2.5 px-3 text-center font-black text-amber-950 bg-orange-50 text-sm font-mono">
                     {formatMeters(currentStock.qty152KF)} <span className="text-xs font-semibold">{isAr ? 'م' : 'm'}</span>
                   </td>
@@ -1277,8 +1277,8 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                     152 Gris
                   </td>
                   <td className="py-2.5 px-3 text-center text-neutral-500 font-mono">0 {isAr ? 'م' : 'm'}</td>
-                  <td className="py-2.5 px-3 text-center font-bold text-emerald-700 font-mono">+{formatMeters(totalEntree152G)} {isAr ? 'م' : 'm'}</td>
-                  <td className="py-2.5 px-3 text-center font-bold text-blue-700 font-mono">-{formatMeters(totalSortie152G)} {isAr ? 'م' : 'm'}</td>
+                  <td className="py-2.5 px-3 text-center font-bold text-emerald-700 font-mono">+{formatMeters(currentStock.qty152Gris)} {isAr ? 'م' : 'm'}</td>
+                  <td className="py-2.5 px-3 text-center font-bold text-blue-700 font-mono">-{formatMeters(0)} {isAr ? 'م' : 'm'}</td>
                   <td className="py-2.5 px-3 text-center font-black text-slate-800 bg-slate-100 text-sm font-mono">
                     {formatMeters(currentStock.qty152Gris)} <span className="text-xs font-semibold">{isAr ? 'م' : 'm'}</span>
                   </td>
@@ -1294,8 +1294,8 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                     124 Vert
                   </td>
                   <td className="py-2.5 px-3 text-center text-neutral-500 font-mono">0 {isAr ? 'م' : 'm'}</td>
-                  <td className="py-2.5 px-3 text-center font-bold text-emerald-700 font-mono">+{formatMeters(totalEntree124V)} {isAr ? 'م' : 'm'}</td>
-                  <td className="py-2.5 px-3 text-center font-bold text-blue-700 font-mono">-{formatMeters(totalSortie124V)} {isAr ? 'م' : 'm'}</td>
+                  <td className="py-2.5 px-3 text-center font-bold text-emerald-700 font-mono">+{formatMeters(currentStock.qty124Vert)} {isAr ? 'م' : 'm'}</td>
+                  <td className="py-2.5 px-3 text-center font-bold text-blue-700 font-mono">-{formatMeters(0)} {isAr ? 'م' : 'm'}</td>
                   <td className="py-2.5 px-3 text-center font-black text-teal-800 bg-teal-50 text-sm font-mono">
                     {formatMeters(currentStock.qty124Vert)} <span className="text-xs font-semibold">{isAr ? 'م' : 'm'}</span>
                   </td>
@@ -1311,8 +1311,8 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                     124 Bleu
                   </td>
                   <td className="py-2.5 px-3 text-center text-neutral-500 font-mono">0 {isAr ? 'م' : 'm'}</td>
-                  <td className="py-2.5 px-3 text-center font-bold text-emerald-700 font-mono">+{formatMeters(totalEntree124B)} {isAr ? 'م' : 'm'}</td>
-                  <td className="py-2.5 px-3 text-center font-bold text-blue-700 font-mono">-{formatMeters(totalSortie124B)} {isAr ? 'م' : 'm'}</td>
+                  <td className="py-2.5 px-3 text-center font-bold text-emerald-700 font-mono">+{formatMeters(currentStock.qty124Bleu)} {isAr ? 'م' : 'm'}</td>
+                  <td className="py-2.5 px-3 text-center font-bold text-blue-700 font-mono">-{formatMeters(0)} {isAr ? 'م' : 'm'}</td>
                   <td className="py-2.5 px-3 text-center font-black text-sky-800 bg-sky-50 text-sm font-mono">
                     {formatMeters(currentStock.qty124Bleu)} <span className="text-xs font-semibold">{isAr ? 'م' : 'm'}</span>
                   </td>
@@ -1326,10 +1326,10 @@ export const InventoryDashboard: React.FC<InventoryDashboardProps> = ({
                   <td className="py-3 px-4 text-neutral-900">{isAr ? 'المجموع' : 'Total'}</td>
                   <td className="py-3 px-4 text-center text-neutral-500">0</td>
                   <td className="py-3 px-4 text-center text-emerald-700 font-mono">
-                    +{formatMeters(totalEntree152V + totalEntree152B + totalEntree152N + totalEntree152KS + totalEntree152KF + totalEntree152G + totalEntree124V + totalEntree124B)} {isAr ? 'م' : 'm'}
+                    +{formatMeters(currentStock.qty152Vert + currentStock.qty152Bleu + currentStock.qty152Noir + currentStock.qty152KS + currentStock.qty152KF + currentStock.qty152Gris + currentStock.qty124Vert + currentStock.qty124Bleu)} {isAr ? 'م' : 'm'}
                   </td>
                   <td className="py-3 px-4 text-center text-blue-700 font-mono">
-                    -{formatMeters(totalSortie152V + totalSortie152B + totalSortie152N + totalSortie152KS + totalSortie152KF + totalSortie152G + totalSortie124V + totalSortie124B)} {isAr ? 'م' : 'm'}
+                    -{formatMeters(0)} {isAr ? 'م' : 'm'}
                   </td>
                   <td className="py-3 px-4 text-center text-neutral-900 bg-neutral-200/60 text-sm font-mono">
                     {formatMeters(currentStock.qty152Vert + currentStock.qty152Bleu + currentStock.qty152Noir + currentStock.qty152KS + currentStock.qty152KF + currentStock.qty152Gris + currentStock.qty124Vert + currentStock.qty124Bleu)} {isAr ? 'م' : 'm'}
