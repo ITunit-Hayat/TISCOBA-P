@@ -333,6 +333,12 @@ export default function App() {
               <span className="hidden sm:inline-flex items-center rounded-xl bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
                 {lang === 'ar' ? 'لوحة عامة' : 'Tableau public'}
               </span>
+              <a
+                href="/rapport"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-xl text-xs font-semibold text-purple-800 hover:bg-purple-100 transition"
+              >
+                {lang === 'ar' ? 'تقرير شهري' : 'Rapport mensuel'}
+              </a>
 
               {/* Language Switch */}
               <button

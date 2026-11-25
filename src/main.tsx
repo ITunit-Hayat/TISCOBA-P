@@ -2,6 +2,7 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import PublicEntryPage from './components/PublicEntryPage.tsx';
+import MonthlyReportPage from './components/MonthlyReportPage.tsx';
 import './index.css';
 
 interface ErrorBoundaryProps {
@@ -77,6 +78,8 @@ createRoot(document.getElementById('root')!).render(
   <RootErrorBoundary>
     {window.location.pathname.replace(/\/+$/, '') === '/saisie'
       ? <PublicEntryPage />
+      : window.location.pathname.replace(/\/+$/, '') === '/rapport'
+      ? <MonthlyReportPage />
       : <App />}
   </RootErrorBoundary>
 );
