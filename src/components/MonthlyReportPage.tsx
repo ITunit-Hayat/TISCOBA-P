@@ -1,59 +1,92 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Download, Package, RefreshCw, TrendingUp } from 'lucide-react';
-import { readInventory } from '../services/googleSheetsApi';
-import { EntreeItem, SortieItem } from '../types/stock';
-
-type Lang = 'ar' | 'fr';
-
-const PRODUCT_KEYS = ['qty152Vert','qty152Bleu','qty152Noir','qty152KS','qty152KF','qty152Gris','qty124Vert','qty124Bleu'] as const;
-const PRODUCT_LABELS: Record<string,string> = { qty152Vert:'152 Vert', qty152Bleu:'152 Bleu', qty152Noir:'152 Noir', qty152KS:'152 K.S', qty152KF:'152 K.F', qty152Gris:'152 Gris', qty124Vert:'124 Vert', qty124Bleu:'124 Bleu' };
-
-function round2(v:number){return Math.round((v||0)*100)/100;}
-function fmt(v:number){const r=round2(v);return r===0?'0.00':r.toFixed(2);}
-function monthOf(d:string){return (d||'').slice(0,7);}
-function monthLabel(m:string,lang:Lang){
-  if(!m) return '';
-  const [y,mm]=m.split('-');
-  const ar=['ظٹظ†ط§ظٹط±','ظپط¨ط±ط§ظٹط±','ظ…ط§ط±ط³','ط£ط¨ط±ظٹظ„','ظ…ط§ظٹظˆ','ظٹظˆظ†ظٹظˆ','ظٹظˆظ„ظٹظˆ','ط£ط؛ط³ط·ط³','ط³ط¨طھظ…ط¨ط±','ط£ظƒطھظˆط¨ط±','ظ†ظˆظپظ…ط¨ط±','ط¯ظٹط³ظ…ط¨ط±'];
-  const fr=['Janvier','Fevrier','Mars','Avril','Mai','Juin','Juillet','Aout','Septembre','Octobre','Novembre','Decembre'];
-  const names=lang==='ar'?ar:fr;
-  const idx=parseInt(mm,10)-1; return `${names[idx]??mm} ${y}`;
-}
-interface MonthRow{month:string;productKey:string;productLabel:string;entree:number;sortie:number;balance:number;revenue:number;salesCount:number;}
-
+﻿import React,{useEffect,useMemo,useState} from 'react';
+import {ArrowLeft,Download,Package,RefreshCw,TrendingUp} from 'lucide-react';
+import {readInventory} from '../services/googleSheetsApi';
+import {EntreeItem,SortieItem} from '../types/stock';
+type Lang='ar'|'fr';
+const PK=['qty152Vert','qty152Bleu','qty152Noir','qty152KS','qty152KF','qty152Gris','qty124Vert','qty124Bleu'] as const;
+const PL:Record<string,string>={qty152Vert:'152 Vert',qty152Bleu:'152 Bleu',qty152Noir:'152 Noir',qty152KS:'152 K.S',qty152KF:'152 K.F',qty152Gris:'152 Gris',qty124Vert:'124 Vert',qty124Bleu:'124 Bleu'};
+function r2(v:number){return Math.round((v||0)*100)/100;}
+function fmt(v:number){const r=r2(v);return r===0?'0.00':r.toFixed(2);}
+function mo(d:string){return (d||'').slice(0,7);}
+function ml(m:string,lang:Lang){if(!m)return '';const[y,mm]=m.split('-');const ar=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];const fr=['Janvier','Fevrier','Mars','Avril','Mai','Juin','Juillet','Aout','Septembre','Octobre','Novembre','Decembre'];const n=lang==='ar'?ar:fr;const i=parseInt(mm,10)-1;return `${n[i]??mm} ${y}`;}
+interface MR{month:string;pk:string;pl:string;e:number;s:number;b:number;rev:number;}
 export default function MonthlyReportPage(){
-  const [lang,setLang]=useState<Lang>('ar');
-  const [entrees,setEntrees]=useState<EntreeItem[]>([]);
-  const [sorties,setSorties]=useState<SortieItem[]>([]);
-  const [loading,setLoading]=useState(true);
-  const [error,setError]=useState<string|null>(null);
-  const [selectedProduct,setSelectedProduct]=useState<string>('all');
-  const [selectedMonth,setSelectedMonth]=useState<string>('all');
-  const isAr=lang==='ar';
-  const load=async()=>{setLoading(true);setError(null);try{const data=await readInventory();setEntrees(Array.isArray(data.entrees)?data.entrees:[]);setSorties(Array.isArray(data.sorties)?data.sorties:[]);}catch(e:any){setError(e?.message||(isAr?'طھط¹ط°ط± طھط­ظ…ظٹظ„ ط§ظ„ط¨ظٹط§ظ†ط§طھ':'Impossible de charger les donnأ©es'));}finally{setLoading(false);}};
-  useEffect(()=>{load();},[]);
-  const months=useMemo(()=>{const set=new Set<string>();entrees.forEach(e=>set.add(monthOf(e.date)));sorties.forEach(s=>set.add(monthOf(s.date)));return Array.from(set).filter(Boolean).sort().reverse();},[entrees,sorties]);
-  const rows:MonthRow[]=useMemo(()=>{
-    const map=new Map<string,MonthRow>();const key=(m:string,p:string)=>`${m}|${p}`;
-    for(const p of PRODUCT_KEYS) for(const m of months) map.set(key(m,p),{month:m,productKey:p,productLabel:PRODUCT_LABELS[p],entree:0,sortie:0,balance:0,revenue:0,salesCount:0});
-    entrees.forEach(e=>{const m=monthOf(e.date);for(const p of PRODUCT_KEYS){const q=Number((e as any)[p])||0;if(q<=0)continue;const r=map.get(key(m,p));if(r){r.entree+=q;r.balance+=q;}}});
-    sorties.forEach(s=>{const m=monthOf(s.date);for(const p of PRODUCT_KEYS){const q=Number((s as any)[p])||0;if(q<=0)continue;const r=map.get(key(m,p));if(r){r.sortie+=q;r.balance-=q;r.salesCount+=1;}}});
-    const revenueMap=new Map<string,number>();
-    sorties.forEach(s=>{const m=monthOf(s.date);const saleQty=PRODUCT_KEYS.reduce((a,p)=>a+(Number((s as any)[p])||0),0);const montant=Number(s.montant)||0;for(const p of PRODUCT_KEYS){const q=Number((s as any)[p])||0;if(q<=0||saleQty<=0)continue;const share=montant*(q/saleQty);const k=key(m,p);revenueMap.set(k,(revenueMap.get(k)||0)+share);}});
-    revenueMap.forEach((v,k)=>{const r=map.get(k);if(r)r.revenue=v;});
-    let result=Array.from(map.values()).filter(r=>r.entree>0||r.sortie>0);
-    if(selectedProduct!=='all') result=result.filter(r=>r.productKey===selectedProduct);
-    if(selectedMonth!=='all') result=result.filter(r=>r.month===selectedMonth);
-    result.sort((a,b)=>b.month.localeCompare(a.month)||a.productLabel.localeCompare(b.productLabel));
-    return result;
-  },[entrees,sorties,months,selectedProduct,selectedMonth]);
-  const totals=useMemo(()=>{const t={entree:0,sortie:0,revenue:0};rows.forEach(r=>{t.entree+=r.entree;t.sortie+=r.sortie;t.revenue+=r.revenue;});return t;},[rows]);
-  const exportCSV=()=>{
-    const header=isAr?['ط§ظ„ط´ظ‡ط±','ط§ظ„ظ…ظ†طھط¬','ظˆط§ط±ط¯ (ظ…)','طµط§ط¯ط± (ظ…)','ط§ظ„ط±طµظٹط¯ (ظ…)','ط§ظ„ظ…ط¯ط§ط®ظٹظ„ (ط¯ط¬)']:['Mois','Produit','Entree (m)','Sortie (m)','Solde (m)','Revenu (DZD)'];
-    const lines=[header.join(',')];
-    rows.forEach(r=>{lines.push([monthLabel(r.month,lang),r.productLabel,fmt(r.entree),fmt(r.sortie),fmt(r.balance),round2(r.revenue).toFixed(2)].join(','));});
-    const blob=new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8;'});
-    const url=URL.createObjectURL(blob);const a=document.createElement('a');
-    a.href=url;a.download=`rapport-mensuel-${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url);
-  return (<div />);
+const [lang,setLang]=useState<Lang>('ar');
+const [entrees,setEntrees]=useState<EntreeItem[]>([]);
+const [sorties,setSorties]=useState<SortieItem[]>([]);
+const [loading,setLoading]=useState(true);
+const [error,setError]=useState<string|null>(null);
+const [sp,setSp]=useState('all');
+const [sm,setSm]=useState('all');
+const isAr=lang==='ar';
+const load=async()=>{setLoading(true);setError(null);try{const d=await readInventory();setEntrees(Array.isArray(d.entrees)?d.entrees:[]);setSorties(Array.isArray(d.sorties)?d.sorties:[]);}catch(e:any){setError(e?.message||(isAr?'تعذر تحميل البيانات':'Impossible de charger'));}finally{setLoading(false);}};
+useEffect(()=>{load();},[]);
+const months=useMemo(()=>{const set=new Set<string>();entrees.forEach(e=>set.add(mo(e.date)));sorties.forEach(s=>set.add(mo(s.date)));return Array.from(set).filter(Boolean).sort().reverse();},[entrees,sorties]);
+const rows:MR[]=useMemo(()=>{
+const map=new Map<string,MR>();const k=(m:string,p:string)=>`${m}|${p}`;
+for(const p of PK) for(const m of months) map.set(k(m,p),{month:m,pk:p,pl:PL[p],e:0,s:0,b:0,rev:0});
+entrees.forEach(e=>{const m=mo(e.date);for(const p of PK){const q=Number((e as any)[p])||0;if(q<=0)continue;const r=map.get(k(m,p));if(r){r.e+=q;r.b+=q;}}});
+sorties.forEach(s=>{const m=mo(s.date);for(const p of PK){const q=Number((s as any)[p])||0;if(q<=0)continue;const r=map.get(k(m,p));if(r){r.s+=q;r.b-=q;}}});
+const rm=new Map<string,number>();
+sorties.forEach(s=>{const m=mo(s.date);const sq=PK.reduce((a,p)=>a+(Number((s as any)[p])||0),0);const mt=Number(s.montant)||0;for(const p of PK){const q=Number((s as any)[p])||0;if(q<=0||sq<=0)continue;const sh=mt*(q/sq);const kk=k(m,p);rm.set(kk,(rm.get(kk)||0)+sh);}});
+rm.forEach((v,kk)=>{const r=map.get(kk);if(r)r.rev=v;});
+let res=Array.from(map.values()).filter(r=>r.e>0||r.s>0);
+if(sp!=='all') res=res.filter(r=>r.pk===sp);
+if(sm!=='all') res=res.filter(r=>r.month===sm);
+res.sort((a,b)=>b.month.localeCompare(a.month)||a.pl.localeCompare(b.pl));
+return res;
+},[entrees,sorties,months,sp,sm]);
+const tot=useMemo(()=>{const t={e:0,s:0,rev:0};rows.forEach(r=>{t.e+=r.e;t.s+=r.s;t.rev+=r.rev;});return t;},[rows]);
+const exportCSV=()=>{const h=isAr?['الشهر','المنتج','وارد (م)','صادر (م)','الرصيد (م)','المداخيل (دج)']:['Mois','Produit','Entree (m)','Sortie (m)','Solde (m)','Revenu (DZD)'];const lines=[h.join(',')];rows.forEach(r=>{lines.push([ml(r.month,lang),r.pl,fmt(r.e),fmt(r.s),fmt(r.b),r2(r.rev).toFixed(2)].join(','));});const blob=new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`rapport-mensuel-${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url);};
+  return (
+    <div dir={isAr?'rtl':'ltr'} className="min-h-screen bg-neutral-100/70 text-neutral-900 font-sans">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-neutral-200/80 shadow-xs">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16 gap-3">
+          <div className="flex items-center gap-3">
+            <a href="/" className="w-9 h-9 rounded-xl bg-neutral-200 text-neutral-700 flex items-center justify-center hover:bg-neutral-300 transition" title={isAr?'رجوع':'Retour'}><ArrowLeft className="w-5 h-5" /></a>
+            <div><h1 className="text-sm sm:text-base font-bold text-neutral-900 leading-tight">{isAr?'تقرير شهري - نتائج وتفاصيل كل منتج':'Rapport mensuel - resultats et details par produit'}</h1><p className="text-[11px] text-neutral-500 font-medium leading-tight">{isAr?'8 منتجات - 152 و 124':'8 produits - 152 et 124'}</p></div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={()=>setLang(isAr?'fr':'ar')} className="px-2.5 py-1.5 text-xs font-bold border border-neutral-200 rounded-xl text-neutral-700 hover:bg-neutral-50 transition">{isAr?'FR':'عربي'}</button>
+            <button onClick={load} disabled={loading} className="px-2.5 py-1.5 text-xs font-bold border border-neutral-200 rounded-xl text-neutral-700 hover:bg-neutral-50 transition flex items-center gap-1 disabled:opacity-50"><RefreshCw className={`w-3.5 h-3.5 ${loading?'animate-spin':''}`} />{isAr?'تحديث':'Actualiser'}</button>
+            <button onClick={exportCSV} className="px-2.5 py-1.5 text-xs font-bold border border-emerald-200 bg-emerald-50 rounded-xl text-emerald-800 hover:bg-emerald-100 transition flex items-center gap-1"><Download className="w-3.5 h-3.5" />CSV</button>
+          </div>
+        </div>
+      </header>
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 text-sm font-medium">{error}</div>}
+        <div className="bg-white rounded-2xl border border-neutral-200 shadow-xs p-4 flex flex-wrap gap-3 items-end">
+          <div><label className="block text-xs font-bold text-neutral-700 mb-1.5">{isAr?'المنتج':'Produit'}</label><select value={sp} onChange={(e)=>setSp(e.target.value)} className="px-3 py-2 bg-neutral-50 border border-neutral-300 rounded-xl text-sm font-medium"><option value="all">{isAr?'جميع المنتجات':'Tous les produits'}</option>{PK.map(p=><option key={p} value={p}>{PL[p]}</option>)}</select></div>
+          <div><label className="block text-xs font-bold text-neutral-700 mb-1.5">{isAr?'الشهر':'Mois'}</label><select value={sm} onChange={(e)=>setSm(e.target.value)} className="px-3 py-2 bg-neutral-50 border border-neutral-300 rounded-xl text-sm font-medium"><option value="all">{isAr?'جميع الأشهر':'Tous les mois'}</option>{months.map(m=><option key={m} value={m}>{ml(m,lang)}</option>)}</select></div>
+          <div className="flex-1" />
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2"><div className="text-[10px] font-bold text-emerald-800">{isAr?'وارد':'Entree'}</div><div className="text-sm font-black text-emerald-700 font-mono">{fmt(tot.e)} م</div></div>
+            <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-2"><div className="text-[10px] font-bold text-blue-800">{isAr?'صادر':'Sortie'}</div><div className="text-sm font-black text-blue-700 font-mono">{fmt(tot.s)} م</div></div>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2"><div className="text-[10px] font-bold text-amber-800">{isAr?'مداخيل':'Revenu'}</div><div className="text-sm font-black text-amber-900 font-mono">{r2(tot.rev).toLocaleString()} دج</div></div>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl border border-neutral-200 shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-neutral-100 text-neutral-700"><tr>
+                <th className="px-3 py-2.5 text-start font-bold">{isAr?'الشهر':'Mois'}</th>
+                <th className="px-3 py-2.5 text-start font-bold">{isAr?'المنتج':'Produit'}</th>
+                <th className="px-3 py-2.5 text-end font-bold">{isAr?'وارد (م)':'Entree (m)'}</th>
+                <th className="px-3 py-2.5 text-end font-bold">{isAr?'صادر (م)':'Sortie (m)'}</th>
+                <th className="px-3 py-2.5 text-end font-bold">{isAr?'الرصيد (م)':'Solde (m)'}</th>
+                <th className="px-3 py-2.5 text-end font-bold">{isAr?'مداخيل (دج)':'Revenu (DZD)'}</th>
+              </tr></thead>
+              <tbody>
+                {loading && <tr><td colSpan={6} className="px-3 py-8 text-center text-neutral-500">{isAr?'جارٍ التحميل...':'Chargement...'}</td></tr>}
+                {!loading && rows.length===0 && <tr><td colSpan={6} className="px-3 py-8 text-center text-neutral-500">{isAr?'لا توجد بيانات':'Aucune donnee'}</td></tr>}
+                {rows.map((r,i)=><tr key={`${r.month}-${r.pk}-${i}`} className="border-t border-neutral-100 hover:bg-neutral-50/60"><td className="px-3 py-2 font-medium">{ml(r.month,lang)}</td><td className="px-3 py-2"><span className="inline-flex items-center gap-1.5"><Package className="w-3.5 h-3.5 text-neutral-400" />{r.pl}</span></td><td className="px-3 py-2 text-end font-mono text-emerald-700">{fmt(r.e)}</td><td className="px-3 py-2 text-end font-mono text-blue-700">{fmt(r.s)}</td><td className={`px-3 py-2 text-end font-mono font-bold ${r2(r.b)<0?'text-red-600':'text-neutral-800'}`}>{fmt(r.b)}</td><td className="px-3 py-2 text-end font-mono text-amber-900">{r2(r.rev).toLocaleString()}</td></tr>)}
+              </tbody>
+              {rows.length>0 && (<tfoot className="bg-neutral-100 font-bold"><tr><td colSpan={2} className="px-3 py-2.5">{isAr?'المجموع':'Total'}</td><td className="px-3 py-2.5 text-end font-mono text-emerald-700">{fmt(tot.e)}</td><td className="px-3 py-2.5 text-end font-mono text-blue-700">{fmt(tot.s)}</td><td className="px-3 py-2.5 text-end font-mono">{fmt(tot.e-tot.s)}</td><td className="px-3 py-2.5 text-end font-mono text-amber-900">{r2(tot.rev).toLocaleString()}</td></tr></tfoot>)}
+            </table>
+          </div>
+        </div>
+        <div className="text-xs text-neutral-500 text-center flex items-center justify-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" />{isAr?'المداخيل موزعة تناسبيا حسب كمية كل منتج في كل عملية بيع.':'Revenus repartis proportionnellement a la quantite de chaque produit par vente.'}</div>
+      </main>
+    </div>
+  );
 }
