@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   FileSpreadsheet,
   CheckCircle2, 
+  TrendingUp,
+
 } from 'lucide-react';
 import { EntreeItem, SortieItem } from './types/stock';
 import { InventoryDashboard } from './components/InventoryDashboard';
@@ -335,8 +337,9 @@ export default function App() {
               </span>
               <a
                 href="/rapport"
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-xl text-xs font-semibold text-purple-800 hover:bg-purple-100 transition"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg hover:from-purple-700 hover:to-indigo-700 transition transform hover:-translate-y-0.5"
               >
+                <TrendingUp className="w-4 h-4" />
                 {lang === 'ar' ? 'تقرير شهري' : 'Rapport mensuel'}
               </a>
 
