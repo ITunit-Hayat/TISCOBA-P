@@ -18,7 +18,10 @@ type InventorySheetMutation =
   | { action: 'delete'; sheet: 'sortie'; id: string };
 
 export default function App() {
-  const [lang, setLang] = useState<'ar' | 'fr'>('ar');
+  const [lang, setLang] = useState<'ar' | 'fr'>(() => {
+    try { return (localStorage.getItem('lang') as 'ar' | 'fr') || 'ar'; } catch { return 'ar'; }
+  });
+  useEffect(() => { try { localStorage.setItem('lang', lang); } catch {} }, [lang]);
 
   // Database status indicators
   const [isSyncingCloud, setIsSyncingCloud] = useState(false);
