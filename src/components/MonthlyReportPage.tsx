@@ -85,6 +85,20 @@ const exportCSV=()=>{const h=isAr?['الشهر','المنتج','وارد (م)','
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
+              <thead className="bg-neutral-100 text-neutral-700"><tr>
+                <th className="px-3 py-2.5 text-start font-bold">{isAr?'الشهر':'Mois'}</th>
+                <th className="px-3 py-2.5 text-start font-bold">{isAr?'المنتج':'Produit'}</th>
+                <th className="px-3 py-2.5 text-end font-bold">{isAr?'وارد (م)':'Entree (m)'}</th>
+                <th className="px-3 py-2.5 text-end font-bold">{isAr?'صادر (م)':'Sortie (m)'}</th>
+                <th className="px-3 py-2.5 text-end font-bold">{isAr?'الرصيد (م)':'Solde (m)'}</th>
+                <th className="px-3 py-2.5 text-end font-bold">{isAr?'مداخيل (دج)':'Revenu (DZD)'}</th>
+              </tr></thead>
+              <tbody>
+                {loading && <tr><td colSpan={6} className="px-3 py-8 text-center text-neutral-500">{isAr?'جارٍ التحميل...':'Chargement...'}</td></tr>}
+                {!loading && rows.length===0 && <tr><td colSpan={6} className="px-3 py-8 text-center text-neutral-500">{isAr?'لا توجد بيانات':'Aucune donnee'}</td></tr>}
+                {rows.map((r,i)=><tr key={`${r.month}-${r.pk}-${i}`} className="border-t border-neutral-100 hover:bg-neutral-50/60"><td className="px-3 py-2 font-medium">{ml(r.month,lang)}</td><td className="px-3 py-2"><span className="inline-flex items-center gap-1.5"><Package className="w-3.5 h-3.5 text-neutral-400" />{r.pl}</span></td><td className="px-3 py-2 text-end font-mono text-emerald-700">{fmt(r.e)}</td><td className="px-3 py-2 text-end font-mono text-blue-700">{fmt(r.s)}</td><td className={`px-3 py-2 text-end font-mono font-bold ${r2(r.b)<0?'text-red-600':'text-neutral-800'}`}>{fmt(r.b)}</td><td className="px-3 py-2 text-end font-mono text-amber-900">{r2(r.rev).toLocaleString()}</td></tr>)}
+              </tbody>
+              {rows.length>0 && (<tfoot className="bg-neutral-100 font-bold"><tr><td colSpan={2} className="px-3 py-2.5">{isAr?'المجموع':'Total'}</td><td className="px-3 py-2.5 text-end font-mono text-emerald-700">{fmt(tot.e)}</td><td className="px-3 py-2.5 text-end font-mono text-blue-700">{fmt(tot.s)}</td><td className="px-3 py-2.5 text-end font-mono">{fmt(tot.e-tot.s)}</td><td className="px-3 py-2.5 text-end font-mono text-amber-900">{r2(tot.rev).toLocaleString()}</td></tr></tfoot>)}
             </table>
           </div>
         </div>
