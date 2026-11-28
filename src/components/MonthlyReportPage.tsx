@@ -11,7 +11,8 @@ function mo(d:string){return (d||'').slice(0,7);}
 function ml(m:string,lang:Lang){if(!m)return '';const[y,mm]=m.split('-');const ar=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];const fr=['Janvier','Fevrier','Mars','Avril','Mai','Juin','Juillet','Aout','Septembre','Octobre','Novembre','Decembre'];const n=lang==='ar'?ar:fr;const i=parseInt(mm,10)-1;return `${n[i]??mm} ${y}`;}
 interface MR{month:string;pk:string;pl:string;e:number;s:number;b:number;rev:number;}
 export default function MonthlyReportPage(){
-const [lang,setLang]=useState<Lang>('ar');
+const [lang,setLang]=useState<Lang>(()=>{try{return (localStorage.getItem('lang') as Lang)||'ar';}catch{return 'ar';}});
+useEffect(()=>{try{localStorage.setItem('lang',lang);}catch{}},[lang]);
 const [entrees,setEntrees]=useState<EntreeItem[]>([]);
 const [sorties,setSorties]=useState<SortieItem[]>([]);
 const [loading,setLoading]=useState(true);
@@ -67,6 +68,23 @@ const exportCSV=()=>{const h=isAr?['الشهر','المنتج','وارد (م)','
         </div>
         <div className="bg-white rounded-2xl border border-neutral-200 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
+            <div className="p-4 border-b border-neutral-100">
+              <h3 className="text-xs font-bold text-neutral-700 mb-2 flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" />{isAr?'مخطط شهري - الوارد والصادر':'Graphique mensuel - Entree et Sortie'}</h3>
+              <div className="flex items-end gap-1 h-32">
+                {months.slice(0,12).reverse().map(m=>{
+                  const me=rows.filter(r=>r.month===m).reduce((a,r)=>a+r.e,0);
+                  const ms=rows.filter(r=>r.month===m).reduce((a,r)=>a+r.s,0);
+                  const maxE=Math.max(1,...months.map(mm=>rows.filter(r=>r.month===mm).reduce((a,r)=>a+r.e,0)));
+                  const maxS=Math.max(1,...months.map(mm=>rows.filter(r=>r.month===mm).reduce((a,r)=>a+r.s,0)));
+                  return <div key={m} className="flex-1 flex flex-col items-center gap-0.5">
+                    <div className="w-full bg-emerald-400 rounded-t" style={{height:`${(me/maxE)*48}px`}} title={`${ml(m,lang)}: ${fmt(me)}`} />
+                    <div className="w-full bg-blue-400 rounded-t" style={{height:`${(ms/maxS)*48}px`}} title={`${ml(m,lang)}: ${fmt(ms)}`} />
+                    <span className="text-[8px] text-neutral-500 truncate w-full text-center">{ml(m,lang).split(' ')[0]}</span>
+                  </div>;
+                })}
+              </div>
+              <div className="flex gap-3 mt-1 text-[10px] font-bold"><span className="text-emerald-700">■ {isAr?'وارد':'Entree'}</span><span className="text-blue-700">■ {isAr?'صادر':'Sortie'}</span></div>
+            </div>
             <table className="w-full text-sm">
               <thead className="bg-neutral-100 text-neutral-700"><tr>
                 <th className="px-3 py-2.5 text-start font-bold">{isAr?'الشهر':'Mois'}</th>
