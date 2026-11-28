@@ -3,7 +3,7 @@ import {
   FileSpreadsheet,
   CheckCircle2, 
   TrendingUp,
-
+  BarChart3,
 } from 'lucide-react';
 import { EntreeItem, SortieItem } from './types/stock';
 import { InventoryDashboard } from './components/InventoryDashboard';
@@ -340,10 +340,10 @@ export default function App() {
               </span>
               <a
                 href="/rapport"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg hover:from-purple-700 hover:to-indigo-700 transition transform hover:-translate-y-0.5"
+                className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition border border-slate-700"
               >
-                <TrendingUp className="w-4 h-4" />
-                {lang === 'ar' ? 'تقرير شهري' : 'Rapport mensuel'}
+                <BarChart3 className="w-4 h-4 text-emerald-400" />
+                <span>{lang === 'ar' ? 'المتابعة والإحصائيات الشهرية' : 'Suivi & Statistiques'}</span>
               </a>
 
               {/* Language Switch */}
