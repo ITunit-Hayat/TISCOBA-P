@@ -67,43 +67,28 @@ const exportCSV=()=>{const h=isAr?['الشهر','المنتج','وارد (م)','
           </div>
         </div>
         <div className="bg-white rounded-2xl border border-neutral-200 shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <div className="p-4 border-b border-neutral-100">
-              <h3 className="text-xs font-bold text-neutral-700 mb-2 flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" />{isAr?'مخطط شهري - الوارد والصادر':'Graphique mensuel - Entree et Sortie'}</h3>
-              <div className="flex items-end gap-1 h-32">
-                {months.slice(0,12).reverse().map(m=>{
-                  const me=rows.filter(r=>r.month===m).reduce((a,r)=>a+r.e,0);
-                  const ms=rows.filter(r=>r.month===m).reduce((a,r)=>a+r.s,0);
-                  const maxE=Math.max(1,...months.map(mm=>rows.filter(r=>r.month===mm).reduce((a,r)=>a+r.e,0)));
-                  const maxS=Math.max(1,...months.map(mm=>rows.filter(r=>r.month===mm).reduce((a,r)=>a+r.s,0)));
-                  return <div key={m} className="flex-1 flex flex-col items-center gap-0.5">
-                    <div className="w-full bg-emerald-400 rounded-t" style={{height:`${(me/maxE)*48}px`}} title={`${ml(m,lang)}: ${fmt(me)}`} />
-                    <div className="w-full bg-blue-400 rounded-t" style={{height:`${(ms/maxS)*48}px`}} title={`${ml(m,lang)}: ${fmt(ms)}`} />
-                    <span className="text-[8px] text-neutral-500 truncate w-full text-center">{ml(m,lang).split(' ')[0]}</span>
-                  </div>;
-                })}
-              </div>
-              <div className="flex gap-3 mt-1 text-[10px] font-bold"><span className="text-emerald-700">■ {isAr?'وارد':'Entree'}</span><span className="text-blue-700">■ {isAr?'صادر':'Sortie'}</span></div>
+          <div className="p-4 border-b border-neutral-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <h3 className="text-xs font-bold text-neutral-700 mb-2 flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" />{isAr?'خط بياني - الوارد والصادر':'Courbe - Entree et Sortie'}</h3>
+              <svg viewBox="0 0 200 80" className="w-full h-20">
+                {(()=>{const me=months.slice(0,12).map(m=>rows.filter(r=>r.month===m).reduce((a,r)=>a+r.e,0));const ms=months.slice(0,12).map(m=>rows.filter(r=>r.month===m).reduce((a,r)=>a+r.s,0));const max=Math.max(1,...me,...ms);const ptsE=me.map((v,i)=>`${(i/(Math.max(1,me.length-1)))*190+5},${75-(v/max)*70}`).join(' ');const ptsS=ms.map((v,i)=>`${(i/(Math.max(1,ms.length-1)))*190+5},${75-(v/max)*70}`).join(' ');return <><polyline points={ptsE} fill="none" stroke="#16a34a" strokeWidth="2"/><polyline points={ptsS} fill="none" stroke="#2563eb" strokeWidth="2"/></>;})()}
+              </svg>
+              <div className="flex gap-3 text-[10px] font-bold"><span className="text-emerald-700">■ {isAr?'وارد':'Entree'}</span><span className="text-blue-700">■ {isAr?'صادر':'Sortie'}</span></div>
             </div>
+            <div>
+              <h3 className="text-xs font-bold text-neutral-700 mb-2">{isAr?'دائرة - توزيع المخزون':'Cercle - Repartition stock'}</h3>
+              <svg viewBox="0 0 80 80" className="w-20 h-20 mx-auto">
+                {(()=>{const total=tot.e+tot.s||1;const pe=(tot.e/total)*100;const ps=(tot.s/total)*100;return <><circle cx="40" cy="40" r="30" fill="none" stroke="#e5e7eb" strokeWidth="10"/><circle cx="40" cy="40" r="30" fill="none" stroke="#16a34a" strokeWidth="10" strokeDasharray={`${pe*1.885} 188.5`} transform="rotate(-90 40 40)"/><circle cx="40" cy="40" r="30" fill="none" stroke="#2563eb" strokeWidth="10" strokeDasharray={`${ps*1.885} 188.5`} strokeDashoffset={-pe*1.885} transform="rotate(-90 40 40)"/></>;})()}
+              </svg>
+              <div className="flex justify-center gap-3 text-[10px] font-bold"><span className="text-emerald-700">{fmt(tot.e)} {isAr?'وارد':'E'}</span><span className="text-blue-700">{fmt(tot.s)} {isAr?'صادر':'S'}</span></div>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-neutral-100 text-neutral-700"><tr>
-                <th className="px-3 py-2.5 text-start font-bold">{isAr?'الشهر':'Mois'}</th>
-                <th className="px-3 py-2.5 text-start font-bold">{isAr?'المنتج':'Produit'}</th>
-                <th className="px-3 py-2.5 text-end font-bold">{isAr?'وارد (م)':'Entree (m)'}</th>
-                <th className="px-3 py-2.5 text-end font-bold">{isAr?'صادر (م)':'Sortie (m)'}</th>
-                <th className="px-3 py-2.5 text-end font-bold">{isAr?'الرصيد (م)':'Solde (m)'}</th>
-                <th className="px-3 py-2.5 text-end font-bold">{isAr?'مداخيل (دج)':'Revenu (DZD)'}</th>
-              </tr></thead>
-              <tbody>
-                {loading && <tr><td colSpan={6} className="px-3 py-8 text-center text-neutral-500">{isAr?'جارٍ التحميل...':'Chargement...'}</td></tr>}
-                {!loading && rows.length===0 && <tr><td colSpan={6} className="px-3 py-8 text-center text-neutral-500">{isAr?'لا توجد بيانات':'Aucune donnee'}</td></tr>}
-                {rows.map((r,i)=><tr key={`${r.month}-${r.pk}-${i}`} className="border-t border-neutral-100 hover:bg-neutral-50/60"><td className="px-3 py-2 font-medium">{ml(r.month,lang)}</td><td className="px-3 py-2"><span className="inline-flex items-center gap-1.5"><Package className="w-3.5 h-3.5 text-neutral-400" />{r.pl}</span></td><td className="px-3 py-2 text-end font-mono text-emerald-700">{fmt(r.e)}</td><td className="px-3 py-2 text-end font-mono text-blue-700">{fmt(r.s)}</td><td className={`px-3 py-2 text-end font-mono font-bold ${r2(r.b)<0?'text-red-600':'text-neutral-800'}`}>{fmt(r.b)}</td><td className="px-3 py-2 text-end font-mono text-amber-900">{r2(r.rev).toLocaleString()}</td></tr>)}
-              </tbody>
-              {rows.length>0 && (<tfoot className="bg-neutral-100 font-bold"><tr><td colSpan={2} className="px-3 py-2.5">{isAr?'المجموع':'Total'}</td><td className="px-3 py-2.5 text-end font-mono text-emerald-700">{fmt(tot.e)}</td><td className="px-3 py-2.5 text-end font-mono text-blue-700">{fmt(tot.s)}</td><td className="px-3 py-2.5 text-end font-mono">{fmt(tot.e-tot.s)}</td><td className="px-3 py-2.5 text-end font-mono text-amber-900">{r2(tot.rev).toLocaleString()}</td></tr></tfoot>)}
             </table>
           </div>
         </div>
-        <div className="text-xs text-neutral-500 text-center flex items-center justify-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" />{isAr?'المداخيل موزعة تناسبيا حسب كمية كل منتج في كل عملية بيع.':'Revenus repartis proportionnellement a la quantite de chaque produit par vente.'}</div>
+        <div className="text-xs text-neutral-500 text-center flex items-center justify-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" />{isAr?"المداخيل موزعة تناسبيا حسب كمية كل منتج في كل عملية بيع.":"Revenus repartis proportionnellement a la quantite de chaque produit par vente."}</div>
       </main>
     </div>
   );
