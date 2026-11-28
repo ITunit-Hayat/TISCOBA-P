@@ -70,15 +70,15 @@ const exportCSV=()=>{const h=isAr?['الشهر','المنتج','وارد (م)','
           <div className="p-4 border-b border-neutral-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <h3 className="text-xs font-bold text-neutral-700 mb-2 flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" />{isAr?'خط بياني - الوارد والصادر':'Courbe - Entree et Sortie'}</h3>
-              <svg viewBox="0 0 200 80" className="w-full h-20">
-                {(()=>{const me=months.slice(0,12).map(m=>rows.filter(r=>r.month===m).reduce((a,r)=>a+r.e,0));const ms=months.slice(0,12).map(m=>rows.filter(r=>r.month===m).reduce((a,r)=>a+r.s,0));const max=Math.max(1,...me,...ms);const ptsE=me.map((v,i)=>`${(i/(Math.max(1,me.length-1)))*190+5},${75-(v/max)*70}`).join(' ');const ptsS=ms.map((v,i)=>`${(i/(Math.max(1,ms.length-1)))*190+5},${75-(v/max)*70}`).join(' ');return <><polyline points={ptsE} fill="none" stroke="#16a34a" strokeWidth="2"/><polyline points={ptsS} fill="none" stroke="#2563eb" strokeWidth="2"/></>;})()}
+              <svg viewBox="0 0 400 150" className="w-full h-32">
+                {(()=>{const me=months.slice(0,12).map(m=>rows.filter(r=>r.month===m).reduce((a,r)=>a+r.e,0));const ms=months.slice(0,12).map(m=>rows.filter(r=>r.month===m).reduce((a,r)=>a+r.s,0));const max=Math.max(1,...me,...ms);const n=Math.max(1,me.length-1);const ptsE=me.map((v,i)=>`${(i/n)*390+5},${140-(v/max)*130}`).join(' ');const ptsS=ms.map((v,i)=>`${(i/n)*390+5},${140-(v/max)*130}`).join(' ');return <><polyline points={ptsE} fill="none" stroke="#16a34a" strokeWidth="3"/><polyline points={ptsS} fill="none" stroke="#2563eb" strokeWidth="3"/></>;})()}
               </svg>
               <div className="flex gap-3 text-[10px] font-bold"><span className="text-emerald-700">■ {isAr?'وارد':'Entree'}</span><span className="text-blue-700">■ {isAr?'صادر':'Sortie'}</span></div>
             </div>
             <div>
               <h3 className="text-xs font-bold text-neutral-700 mb-2">{isAr?'دائرة - توزيع المخزون':'Cercle - Repartition stock'}</h3>
-              <svg viewBox="0 0 80 80" className="w-20 h-20 mx-auto">
-                {(()=>{const total=tot.e+tot.s||1;const pe=(tot.e/total)*100;const ps=(tot.s/total)*100;return <><circle cx="40" cy="40" r="30" fill="none" stroke="#e5e7eb" strokeWidth="10"/><circle cx="40" cy="40" r="30" fill="none" stroke="#16a34a" strokeWidth="10" strokeDasharray={`${pe*1.885} 188.5`} transform="rotate(-90 40 40)"/><circle cx="40" cy="40" r="30" fill="none" stroke="#2563eb" strokeWidth="10" strokeDasharray={`${ps*1.885} 188.5`} strokeDashoffset={-pe*1.885} transform="rotate(-90 40 40)"/></>;})()}
+              <svg viewBox="0 0 120 120" className="w-32 h-32 mx-auto">
+                {(()=>{const total=tot.e+tot.s||1;const pe=(tot.e/total)*100;const ps=(tot.s/total)*100;return <><circle cx="60" cy="60" r="45" fill="none" stroke="#e5e7eb" strokeWidth="16"/><circle cx="60" cy="60" r="45" fill="none" stroke="#16a34a" strokeWidth="16" strokeDasharray={`${pe*2.827} 282.7`} transform="rotate(-90 60 60)"/><circle cx="60" cy="60" r="45" fill="none" stroke="#2563eb" strokeWidth="16" strokeDasharray={`${ps*2.827} 282.7`} strokeDashoffset={-pe*2.827} transform="rotate(-90 60 60)"/></>;})()}
               </svg>
               <div className="flex justify-center gap-3 text-[10px] font-bold"><span className="text-emerald-700">{fmt(tot.e)} {isAr?'وارد':'E'}</span><span className="text-blue-700">{fmt(tot.s)} {isAr?'صادر':'S'}</span></div>
             </div>
